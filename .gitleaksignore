@@ -1,0 +1,6 @@
+# Gitleaks allowlist
+# Add fingerprints of known false positives here.
+# Format: one fingerprint per line (from gitleaks output)
+#
+# Example:
+# abc123def456  # Example API key in documentation

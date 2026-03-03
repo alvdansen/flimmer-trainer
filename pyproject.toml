@@ -1,0 +1,68 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "flimmer"
+version = "0.1.0"
+description = "Video LoRA training toolkit for diffusion transformer models"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+dependencies = [
+    "pydantic>=2.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+video = [
+    "scenedetect[opencv]>=0.6",
+]
+caption = [
+    "google-genai>=1.0",
+    "requests>=2.20",
+]
+dataset = [
+    "filetype>=1.9",
+    "rich>=13.0",
+]
+triage = [
+    "torch>=2.0",
+    "transformers>=4.30",
+    "Pillow>=9.0",
+]
+encoding = [
+    "safetensors>=0.4",
+    "torch>=2.0",
+]
+training = [
+    "torch>=2.0",
+    "safetensors>=0.4",
+    "numpy>=1.24",
+]
+wan = [
+    "torch>=2.0",
+    "diffusers>=0.35,<0.36",
+    "transformers>=4.40",
+    "peft>=0.12",
+    "accelerate>=0.30",
+    "safetensors>=0.4",
+    "numpy>=1.24",
+    "bitsandbytes>=0.43",
+]
+all = [
+    "flimmer[video]",
+    "flimmer[caption]",
+    "flimmer[dataset]",
+    "flimmer[triage]",
+    "flimmer[encoding]",
+    "flimmer[training]",
+    "flimmer[wan]",
+]
+dev = [
+    "pytest>=7.0",
+    "pytest-tmp-files>=0.0.2",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,98 @@
+# --- Secrets & Credentials ---
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Private keys and certificates
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa*
+id_ed25519*
+
+# OAuth and auth files
+.htpasswd
+.netrc
+.npmrc
+!.npmrc.example
+
+# Cloud provider credentials
+.aws/
+.azure/
+.gcp/
+credentials.json
+service-account*.json
+terraform.tfvars
+*.tfstate
+*.tfstate.*
+
+# --- Claude Code ---
+CLAUDE.local.md
+.claude/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+*.whl
+.eggs/
+venv/
+.venv/
+env/
+*.so
+
+# --- Node.js ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+package-lock.json
+
+# --- Generated Environments ---
+# Flimmer creates these during bootstrap; they belong in the
+# user's project, not in this scaffold repo.
+source/
+results/
+tools/
+
+# --- OS & Editor ---
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+*~
+nul
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# --- ML Artifacts ---
+*.safetensors
+*.pt
+*.ckpt
+*.bin
+*.onnx
+checkpoints/
+outputs/
+wandb/
+*.npy
+
+# --- Logs & Temp ---
+*.log
+logs/
+*.bak
+*.tmp
+*.temp
+.cache/

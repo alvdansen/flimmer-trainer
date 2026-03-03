@@ -1,0 +1,13 @@
+# Flimmer Code Owners
+# These users are automatically requested for review on PRs
+# that modify files matching the patterns.
+
+# Default owner for everything
+* @alvdansen
+
+# Security-critical files require owner review
+CLAUDE.md @alvdansen
+SECURITY.md @alvdansen
+.pre-commit-config.yaml @alvdansen
+.gitignore @alvdansen
+.github/CODEOWNERS @alvdansen

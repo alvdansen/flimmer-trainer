@@ -1,0 +1,202 @@
+# ══════════════════════════════════════════════════════════════════════
+# Flimmer Training Config
+# ══════════════════════════════════════════════════════════════════════
+#
+# Training modes — two switches control the strategy:
+#
+#   Fork-and-specialize:  fork_enabled: true  + unified_epochs > 0  (recommended)
+#   Unified only:         fork_enabled: false
+#   Expert from scratch:  fork_enabled: true  + unified_epochs: 0
+
+
+# ── Model & Data ─────────────────────────────────────────────────────
+
+model:
+  variant: 2.2_t2v                         # 2.2_t2v | 2.2_i2v
+
+  # --- Individual weight files (recommended) ---
+  # Point to each component's safetensors file directly.
+  # This is how Comfy-Org distributes models and how setup.sh downloads them.
+  dit_high: /workspace/models/wan2.2_t2v_high_noise_14B_fp16.safetensors
+  dit_low: /workspace/models/wan2.2_t2v_low_noise_14B_fp16.safetensors
+  vae: /workspace/models/wan_2.1_vae.safetensors
+  t5: /workspace/models/models_t5_umt5-xxl-enc-bf16.pth
+  # For non-MoE models (Wan 2.1), use dit instead of dit_high/dit_low:
+  # dit: /path/to/transformer.safetensors
+
+  # --- Diffusers directory (alternative) ---
+  # Uncomment to load all components from a single Diffusers directory.
+  # When set, individual file paths above take priority.
+  # path: Wan-AI/Wan2.2-T2V-14B-Diffusers
+
+  # Architecture auto-fills from variant. Override only if needed:
+  # is_moe: true
+  # in_channels: 36                        # T2V: 16, I2V: 36 (+ reference image)
+  # num_layers: 40
+  # boundary_ratio: 0.500                  # T2V: 0.5, I2V: 0.900
+  # flow_shift: 5.0                        # Validated: 5.0 for T2V
+  # num_train_timesteps: 1000
+
+data_config: ./holly/flimmer_data.yaml
+
+
+# ── LoRA Structure (fixed for entire run) ────────────────────────────
+
+lora:
+  rank: 16                                 # LoRA rank — locked after creation
+  alpha: 16                                # alpha/rank = scaling (1.0x here)
+  loraplus_lr_ratio: 4.0                   # B-matrix LR multiplier
+  dropout: 0.05                            # 0.0 default; 0.05 for >20 clips
+  use_mua_init: false                      # muA init (research, auto-sets alpha=rank)
+
+  # Component targeting — which parts of the transformer to train.
+  #   Component:   "ffn", "self_attn", "cross_attn"  → all projections
+  #   Projection:  "cross_attn.to_v", "ffn.up_proj"  → specific projection only
+  # Component listed = all its projections train. Not listed = frozen.
+  # null = all standard targets (all attention + FFN)
+  target_modules: null
+
+  # Per-block rank — different LoRA capacity per block range.
+  # Example: {"0-11": 24, "30-39": 8}
+  # null = uniform rank everywhere
+  block_rank_overrides: null
+
+
+# ── Optimizer ────────────────────────────────────────────────────────
+
+optimizer:
+  # Fixed for entire run
+  type: adamw8bit                          # adamw | adamw8bit | adafactor | came | prodigy | ademamix | schedule_free_adamw
+  betas: [0.9, 0.999]                     # [b1, b2] for Adam; [b1, b2, b3] for CAME
+  eps: 1e-8                                # Numerical stability
+  max_grad_norm: 1.0                       # Gradient clipping. null = no clipping
+  optimizer_args: {}                       # Extra kwargs passed to optimizer
+
+  # Unified starting values — overridable per expert after fork
+  learning_rate: 5e-5                      # Peak LR. Prodigy requires 1.0
+  weight_decay: 0.01                       # Regularization
+
+
+# ── Scheduler ────────────────────────────────────────────────────────
+
+scheduler:
+  # Fixed for entire run
+  warmup_steps: 0                          # Runs once at training start
+
+  # Unified starting values — overridable per expert after fork
+  type: cosine_with_min_lr                 # constant | cosine | cosine_with_min_lr | cosine_with_restarts | linear | rex | polynomial | constant_with_warmup | inverse_sqrt | step | warmup_stable_decay
+  min_lr: null                             # Absolute floor. null = use min_lr_ratio
+  min_lr_ratio: 0.01                       # Floor as fraction of peak LR
+  # rex_alpha: 0.1                         # Rex scheduler only
+  # rex_beta: 0.9                          # Rex scheduler only
+
+
+# ── Training ─────────────────────────────────────────────────────────
+
+training:
+  # Fixed for entire run
+  mixed_precision: bf16                    # bf16 | fp16 | no
+  base_model_precision: bf16               # bf16 | fp16 | fp32. No quantization.
+  timestep_sampling: shift                 # uniform | shift | logit_normal | sigmoid
+  discrete_flow_shift: null                # null = model default
+  gradient_checkpointing: true             # Always on for video
+  seed: 42                                 # null = random
+  resume_from: null                        # Checkpoint path to resume training
+
+  # Unified phase — starting values, overridable per expert after fork
+  unified_epochs: 15                       # Shared LoRA phase. I2V: 15, T2V: 10
+  unified_targets: null                    # Override target_modules for unified. null = use lora setting
+  # Block targeting — which of the 40 transformer blocks to train.
+  # Format: "0-11" (early only), "0-11,25-34" (ranges), "0-39" (all)
+  # Early blocks (0-11): composition & motion. Late (30-39): detail.
+  # null = all blocks
+  unified_block_targets: null
+  batch_size: 1                            # VRAM-constrained for video
+  gradient_accumulation_steps: 1           # Effective batch = batch_size × this
+  caption_dropout_rate: 0.15               # I2V: 0.15, T2V: 0.10
+
+
+# ── MoE Expert Fork ──────────────────────────────────────────────────
+# Wan 2.2 routes between two experts by noise level. Both experts are
+# active during training regardless of mode. fork_enabled controls
+# whether they get separate LoRAs after the unified phase.
+
+moe:
+  enabled: true                            # This model has two noise-level experts
+  fork_enabled: true                       # true = fork into per-expert LoRAs (recommended)
+  boundary_ratio: null                     # null = model default (T2V: 0.5, I2V: 0.900)
+  preload_experts: false                   # true = pre-load inactive expert to CPU RAM
+                                           #   for fast switching (~3s). Needs ~27GB RAM.
+                                           # false = reload from disk each switch (~30s).
+                                           #   Works on any machine. Set true on cloud pods.
+
+  # Per-expert overrides — null = inherit from unified/optimizer/scheduler
+  high_noise:                              # Composition & motion (early denoising)
+    learning_rate: 1e-4                    # Higher — converges fast on coarse features
+    max_epochs: 30                         # Fewer — done learning earlier
+    # dropout: null                        # null = inherit from lora.dropout
+    # fork_targets: null                   # null = inherit from unified_targets
+    # block_targets: null                  # null = all blocks. Format: "0-11,25-34"
+    # resume_from: null                    # Path to existing LoRA to start from
+    # batch_size: null                     # null = inherit
+    # gradient_accumulation_steps: null
+    # caption_dropout_rate: null
+    # weight_decay: null
+    # min_lr_ratio: null
+    # optimizer_type: null                 # null = inherit from optimizer.type
+    # scheduler_type: null                 # null = inherit from scheduler.type
+
+  low_noise:                               # Fine detail & texture (late denoising)
+    learning_rate: 8e-5                    # Lower — prevents overfitting artifacts
+    max_epochs: 50                         # More — slow, careful refinement
+    # dropout: 0.05                        # Consider higher for low-noise
+    # fork_targets: null
+    # block_targets: null
+    # resume_from: null
+    # batch_size: null
+    # gradient_accumulation_steps: null
+    # caption_dropout_rate: null
+    # weight_decay: null                   # May want higher for low-noise
+    # min_lr_ratio: null
+    # optimizer_type: null
+    # scheduler_type: null
+
+
+# ── Checkpoints ──────────────────────────────────────────────────────
+
+save:
+  save_every_n_epochs: 5                   # Checkpoint interval
+  output_dir: ./output/holly_i2v
+  name: holly_lora
+  save_last: true                          # Always save final checkpoint
+  max_checkpoints: null                    # null = keep all
+  format: safetensors                      # safetensors | diffusers
+
+
+# ── Logging ──────────────────────────────────────────────────────────
+
+logging:
+  backends: [console, wandb]               # console | tensorboard | wandb
+  log_every_n_steps: 10
+
+  # Weights & Biases — requires `wandb login` or WANDB_API_KEY env var
+  wandb_project: flimmer-training          # Created automatically if new
+  wandb_entity: null                       # Team/org name. null = personal account
+  wandb_run_name: holly_i2v_r16            # null = auto-generated
+
+
+# ── Sampling ─────────────────────────────────────────────────────────
+# Generate sample videos during training for visual progress tracking.
+
+sampling:
+  enabled: true                            # Off by default — inference is expensive
+  every_n_epochs: 5                        # Generate at each checkpoint
+  prompts:
+    - "Holly Golightly walks elegantly through a sunlit garden"
+    - "Holly Golightly looks into the camera with a playful smile"
+  neg: "blurry, low quality, distorted"    # Negative prompt for ALL samples
+  seed: 42                                 # Fixed seed for consistent comparison
+  walk_seed: true                          # Increment seed per prompt for variety
+  sample_steps: 25                         # Denoising steps
+  guidance_scale: 4.0                      # Validated default
+  sample_dir: null                         # null = {output_dir}/samples/
