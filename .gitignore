@@ -35,6 +35,9 @@ terraform.tfvars
 CLAUDE.local.md
 .claude/
 
+# --- GSD Planning ---
+.planning/
+
 # --- Python ---
 __pycache__/
 *.py[cod]
