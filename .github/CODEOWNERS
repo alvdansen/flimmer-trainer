@@ -3,11 +3,11 @@
 # that modify files matching the patterns.
 
 # Default owner for everything
-* @alvdansen
+* @aramintak @timm156
 
 # Security-critical files require owner review
-CLAUDE.md @alvdansen
-SECURITY.md @alvdansen
-.pre-commit-config.yaml @alvdansen
-.gitignore @alvdansen
-.github/CODEOWNERS @alvdansen
+CLAUDE.md @aramintak @timm156
+SECURITY.md @aramintak @timm156
+.pre-commit-config.yaml @aramintak @timm156
+.gitignore @aramintak @timm156
+.github/CODEOWNERS @aramintak @timm156
