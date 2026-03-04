@@ -147,7 +147,9 @@ moe:
 
 ## Phase System
 
-For Wan 2.2 MoE models, Flimmer supports multi-phase training through project configs. A project defines a sequence of training phases — typically unified warmup followed by per-expert specialization:
+Phase training breaks LoRA training into stages — each phase can use different datasets, learning rates, or training strategies while the LoRA checkpoint carries forward automatically. Use it for dataset progression (close-ups first, then full-body) or MoE expert specialization. See the [Phase Training Guide](docs/PHASE_TRAINING.md) for a full walkthrough.
+
+A project config defines phases as a sequence of overrides on top of a base training config:
 
 ```yaml
 name: holly_i2v
