@@ -45,19 +45,17 @@ The fork happens automatically at the end of `unified_epochs`. No project config
 
 ## Per-Expert Overrides
 
-In the `moe:` section, each expert can override:
+In the `moe:` section, each expert can override epoch count and other training parameters:
 
 ```yaml
 moe:
   high_noise:
-    learning_rate: 1e-4     # Higher — coarse features converge fast
-    max_epochs: 30           # Fewer — done learning earlier
+    max_epochs: 30
   low_noise:
-    learning_rate: 8e-5     # Lower — fine details need care
-    max_epochs: 50           # More — slow refinement
+    max_epochs: 50
 ```
 
-Any field not overridden inherits from the main optimizer/training sections. See `t2v_wan22.yaml` for the full list of overridable fields.
+Any field not overridden inherits from the main optimizer/training sections. You can also override `learning_rate`, `batch_size`, `caption_dropout_rate`, `weight_decay`, and more per expert. See `t2v_wan22.yaml` for the full list of overridable fields.
 
 ## Adapting for Your Model
 

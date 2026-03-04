@@ -22,9 +22,9 @@
 #   bash scripts/setup.sh --variant 2.2_i2v
 #
 # Usage:
-#   python -m flimmer.training train --config examples/training/i2v_wan22.yaml
+#   python -m flimmer.training train --config config_templates/training/i2v_wan22.yaml
 #
-# For multi-phase project management, see examples/projects/i2v_moe_phases.yaml.
+# For multi-phase project management, see config_templates/projects/i2v_moe_phases.yaml.
 #
 # ══════════════════════════════════════════════════════════════════════
 
@@ -104,7 +104,7 @@ training:
 
 # ── MoE Expert Fork ────────────────────────────────────────────────
 # After unified_epochs, the LoRA splits into per-expert copies.
-# Each expert gets its own learning rate, epoch count, and targets.
+# Each expert gets its own epoch count and optional overrides.
 #
 # The boundary_ratio (0.900 for I2V) determines the noise-level split:
 #   - High-noise expert handles timesteps above the boundary
@@ -118,13 +118,13 @@ moe:
 
   # High-noise expert: composition, motion, coarse structure
   high_noise:
-    learning_rate: 1e-4                          # Higher — converges fast on coarse features
-    max_epochs: 30                               # Fewer — done learning earlier
+    max_epochs: 30
+    # learning_rate: null                        # null = inherit from optimizer
 
   # Low-noise expert: fine detail, texture, sharpness
   low_noise:
-    learning_rate: 8e-5                          # Lower — prevents overfitting artifacts
-    max_epochs: 50                               # More — slow, careful refinement
+    max_epochs: 50
+    # learning_rate: null                        # null = inherit from optimizer
 
 
 # ── Checkpoints ─────────────────────────────────────────────────────

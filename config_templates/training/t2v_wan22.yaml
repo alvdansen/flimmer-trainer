@@ -37,7 +37,7 @@ model:
   # flow_shift: 5.0                        # Validated: 5.0 for T2V
   # num_train_timesteps: 1000
 
-data_config: ./holly/flimmer_data.yaml
+data_config: ./flimmer_data.yaml
 
 
 # ── LoRA Structure (fixed for entire run) ────────────────────────────
@@ -132,8 +132,8 @@ moe:
 
   # Per-expert overrides — null = inherit from unified/optimizer/scheduler
   high_noise:                              # Composition & motion (early denoising)
-    learning_rate: 1e-4                    # Higher — converges fast on coarse features
-    max_epochs: 30                         # Fewer — done learning earlier
+    max_epochs: 30
+    # learning_rate: null                  # null = inherit from optimizer.learning_rate
     # dropout: null                        # null = inherit from lora.dropout
     # fork_targets: null                   # null = inherit from unified_targets
     # block_targets: null                  # null = all blocks. Format: "0-11,25-34"
@@ -147,16 +147,16 @@ moe:
     # scheduler_type: null                 # null = inherit from scheduler.type
 
   low_noise:                               # Fine detail & texture (late denoising)
-    learning_rate: 8e-5                    # Lower — prevents overfitting artifacts
-    max_epochs: 50                         # More — slow, careful refinement
-    # dropout: 0.05                        # Consider higher for low-noise
+    max_epochs: 50
+    # learning_rate: null                  # null = inherit from optimizer.learning_rate
+    # dropout: null
     # fork_targets: null
     # block_targets: null
     # resume_from: null
     # batch_size: null
     # gradient_accumulation_steps: null
     # caption_dropout_rate: null
-    # weight_decay: null                   # May want higher for low-noise
+    # weight_decay: null
     # min_lr_ratio: null
     # optimizer_type: null
     # scheduler_type: null
@@ -166,8 +166,8 @@ moe:
 
 save:
   save_every_n_epochs: 5                   # Checkpoint interval
-  output_dir: ./output/holly_i2v
-  name: holly_lora
+  output_dir: ./output
+  name: my_lora
   save_last: true                          # Always save final checkpoint
   max_checkpoints: null                    # null = keep all
   format: safetensors                      # safetensors | diffusers
@@ -182,7 +182,7 @@ logging:
   # Weights & Biases — requires `wandb login` or WANDB_API_KEY env var
   wandb_project: flimmer-training          # Created automatically if new
   wandb_entity: null                       # Team/org name. null = personal account
-  wandb_run_name: holly_i2v_r16            # null = auto-generated
+  wandb_run_name: null                     # null = auto-generated
 
 
 # ── Sampling ─────────────────────────────────────────────────────────

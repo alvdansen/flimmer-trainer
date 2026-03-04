@@ -18,7 +18,7 @@
 #   bash scripts/setup.sh --variant 2.1_i2v_480p
 #
 # Usage:
-#   python -m flimmer.training train --config examples/training/i2v_wan21.yaml
+#   python -m flimmer.training train --config config_templates/training/i2v_wan21.yaml
 #
 # ══════════════════════════════════════════════════════════════════════
 
@@ -98,7 +98,7 @@ training:
 
 # ── MoE ─────────────────────────────────────────────────────────────
 # Wan 2.1 is non-MoE — no expert fork. This section is not needed.
-# For MoE training, see examples/training/i2v_wan22.yaml.
+# For MoE training, see config_templates/training/i2v_wan22.yaml.
 
 
 # ── Checkpoints ─────────────────────────────────────────────────────

@@ -33,15 +33,15 @@
 #     max_epochs, etc.) — everything else comes from base_config
 #
 # Usage:
-#   python -m flimmer.project run --project examples/projects/i2v_moe_phases.yaml
-#   python -m flimmer.project status --project examples/projects/i2v_moe_phases.yaml
+#   python -m flimmer.project run --project config_templates/projects/i2v_moe_phases.yaml
+#   python -m flimmer.project status --project config_templates/projects/i2v_moe_phases.yaml
 #
 # ══════════════════════════════════════════════════════════════════════
 
 
 # ── Project Identity ────────────────────────────────────────────────
 
-name: holly_i2v
+name: my_i2v_project
 model_id: wan-2.2-i2v-14b
 
 
@@ -50,7 +50,7 @@ model_id: wan-2.2-i2v-14b
 # lora structure, optimizer, save settings, etc. All phases inherit
 # from this config and only override specific parameters.
 
-base_config: ./holly/flimmer_train.yaml
+base_config: ./flimmer_train.yaml
 
 
 # ── Run-Level Params (locked for entire project) ───────────────────
@@ -85,22 +85,18 @@ phases:
 
   # Phase 2: High-noise expert gets its own LoRA copy.
   # Handles composition, motion, and coarse structure.
-  # Higher LR because coarse features are easier to learn.
   - type: high_noise
     name: "High Noise Expert"
     overrides:
-      learning_rate: 1e-4
       max_epochs: 30
     extras:
       boundary_ratio: 0.900                      # I2V noise boundary
 
   # Phase 3: Low-noise expert gets its own LoRA copy.
   # Handles fine detail, texture, and sharpness.
-  # Lower LR + more epochs for careful refinement.
   - type: low_noise
     name: "Low Noise Expert"
     overrides:
-      learning_rate: 8e-5
       max_epochs: 50
     extras:
       boundary_ratio: 0.900                      # I2V noise boundary

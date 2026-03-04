@@ -20,6 +20,24 @@ data config          training config          project config (optional)
 
 **Project config** (optional) chains multiple training phases together — different datasets, learning rates, or expert specialization at each stage. It references a training config via `base_config:` and only overrides what changes per phase.
 
+## Recommended Project Layout
+
+Keep your config files alongside your dataset in one folder. All paths in configs resolve relative to the config file's location, so this keeps paths simple:
+
+```
+my_project/
+  flimmer_data.yaml        # data config (copied from data/standard.yaml)
+  flimmer_train.yaml       # training config (copied from training/)
+  project.yaml             # optional — only if using multi-phase
+  video_clips/             # your clips + sidecar caption .txt files
+    clip_001.mp4
+    clip_001.txt
+    clip_002.mp4
+    clip_002.txt
+```
+
+With this layout, your training config just says `data_config: ./flimmer_data.yaml` and your data config says `path: ./video_clips` — no absolute paths needed.
+
 ## Do I Need a Project?
 
 **No.** Most users start with just a data config + training config:
