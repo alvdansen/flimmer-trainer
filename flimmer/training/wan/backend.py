@@ -533,6 +533,43 @@ class WanModelBackend:
         """
         return get_expert_masks(timesteps, boundary_ratio)
 
+    def _build_i2v_hidden_states(
+        self,
+        noisy_latents: Any,
+        reference: Any,
+    ) -> Any:
+        """Build 36-channel I2V hidden states from noisy latents + reference.
+
+        Wan I2V expects: noisy(16) + mask(4) + reference(16) = 36 channels.
+        The reference is pre-encoded as [B, 16, 1, H, W] (single frame).
+        We expand it temporally and add mask channels to match the model's
+        expected input format (matching diffusers/musubi-tuner convention).
+
+        The 4 mask channels indicate reference presence per latent frame.
+        All 4 channels are 1.0 for the first latent frame (which contains
+        the reference image) and 0.0 for all subsequent frames. The 4
+        channels correspond to the VAE temporal compression ratio.
+        """
+        import torch
+
+        B, C, F, H, W = noisy_latents.shape
+        device = noisy_latents.device
+        dtype = noisy_latents.dtype
+
+        # Expand reference: [B, 16, 1, H, W] → [B, 16, F, H, W]
+        # First latent frame = reference, rest = zeros
+        ref_expanded = torch.zeros(B, C, F, H, W, device=device, dtype=dtype)
+        ref_expanded[:, :, :reference.shape[2]] = reference.to(
+            device=device, dtype=dtype,
+        )
+
+        # Mask: [B, 4, F, H, W] — all 1s at frame 0, all 0s elsewhere
+        mask = torch.zeros(B, 4, F, H, W, device=device, dtype=dtype)
+        mask[:, :, 0] = 1.0
+
+        # Concatenate: noisy(16) + mask(4) + reference(16) = 36
+        return torch.cat([noisy_latents, mask, ref_expanded], dim=1)
+
     def prepare_model_inputs(
         self,
         batch: dict[str, Any],
@@ -565,12 +602,11 @@ class WanModelBackend:
         hidden_states = noisy_latents
 
         if self._is_i2v and batch.get("reference") is not None:
-            # For I2V: concatenate reference encoding with noisy latents
-            # along the channel dimension. The reference has already been
-            # VAE-encoded and includes the mask channels.
             reference = batch["reference"]
             if reference is not None:
-                hidden_states = torch.cat([noisy_latents, reference], dim=1)
+                hidden_states = self._build_i2v_hidden_states(
+                    noisy_latents, reference,
+                )
 
         inputs["hidden_states"] = hidden_states
 

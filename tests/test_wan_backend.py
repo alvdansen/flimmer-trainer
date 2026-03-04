@@ -462,18 +462,19 @@ class TestPrepareModelInputs:
         assert inputs["hidden_states"].shape[1] == C
 
     def test_i2v_concatenates_reference(self):
-        """I2V models channel-concatenate the reference with noisy latents.
+        """I2V builds 36-channel input from noisy latents + reference.
 
-        The reference encoding has 20 extra channels (mask included).
-        Result: [B, 16+20, F, H, W] = [B, 36, F, H, W].
+        Reference is a raw VAE latent [B, 16, 1, H, W]. The backend
+        expands it temporally and adds 4 mask channels to produce
+        [B, 36, F, H, W] = noisy(16) + mask(4) + reference(16).
         """
         torch = pytest.importorskip("torch")
         backend = _make_i2v_backend(is_i2v=True, in_channels=36)
 
         B, C, F, H, W = 1, 16, 5, 8, 8
-        ref_C = 20  # 16 latent + 4 mask = 20 extra channels
         noisy_latents = torch.zeros(B, C, F, H, W)
-        reference = torch.ones(B, ref_C, F, H, W)
+        # Raw single-frame VAE reference (no mask, no temporal expansion)
+        reference = torch.ones(B, C, 1, H, W)
         batch = {
             "latent": noisy_latents,
             "text_emb": None,
@@ -483,8 +484,15 @@ class TestPrepareModelInputs:
 
         inputs = backend.prepare_model_inputs(batch, torch.tensor([0.5]), noisy_latents)
 
-        # Channel dim should be 16 (noisy) + 20 (reference) = 36
-        assert inputs["hidden_states"].shape[1] == C + ref_C
+        # Channel dim: 16 (noisy) + 4 (mask) + 16 (reference) = 36
+        assert inputs["hidden_states"].shape[1] == 36
+        # Reference should only be in the first latent frame
+        hs = inputs["hidden_states"]
+        assert (hs[0, 20:, 0, 0, 0] == 1.0).all()  # reference at frame 0
+        assert (hs[0, 20:, 1, 0, 0] == 0.0).all()  # zero-padded at frame 1
+        # Mask should be 1 at frame 0, 0 elsewhere
+        assert hs[0, 16, 0, 0, 0].item() == 1.0  # mask at frame 0
+        assert hs[0, 16, 1, 0, 0].item() == 0.0  # mask at frame 1
 
     def test_i2v_no_reference_uses_noisy_only(self):
         """I2V backend with reference=None must fall back to noisy latents alone."""
@@ -501,16 +509,15 @@ class TestPrepareModelInputs:
         assert inputs["hidden_states"].shape[1] == C
 
     def test_21_i2v_concatenates_reference(self):
-        """Wan 2.1 I2V also channel-concatenates the reference with noisy latents."""
+        """Wan 2.1 I2V also builds 36-channel input from raw reference."""
         torch = pytest.importorskip("torch")
         backend = _make_21_i2v_backend()
         B, C, F, H, W = 1, 16, 5, 8, 8
-        ref_C = 20
         noisy = torch.zeros(B, C, F, H, W)
-        reference = torch.ones(B, ref_C, F, H, W)
+        reference = torch.ones(B, C, 1, H, W)
         batch = {"latent": noisy, "text_emb": None, "text_mask": None, "reference": reference}
         inputs = backend.prepare_model_inputs(batch, torch.tensor([0.5]), noisy)
-        assert inputs["hidden_states"].shape[1] == C + ref_C
+        assert inputs["hidden_states"].shape[1] == 36
 
 
 # ---------------------------------------------------------------------------

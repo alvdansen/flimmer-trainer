@@ -264,14 +264,14 @@ else
         pass "$clip_name (17 frames, ${W}x${H})"
     done
 
-    # For I2V: extract first frames as reference images
+    # For I2V: extract first frames as reference images.
+    # Place alongside clips (flat layout pairs by stem).
     if [[ "$IS_I2V" = true ]]; then
         echo ""
         echo "  Extracting reference frames for I2V..."
-        mkdir -p "$CLIPS_DIR/references"
         for clip in "$CLIPS_DIR"/*.mp4; do
             base=$(basename "$clip" .mp4)
-            ffmpeg -y -i "$clip" -frames:v 1 "$CLIPS_DIR/references/${base}.png" 2>/dev/null
+            ffmpeg -y -i "$clip" -frames:v 1 "$CLIPS_DIR/${base}.png" 2>/dev/null
             pass "  ${base}.png"
         done
     fi
