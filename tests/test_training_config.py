@@ -81,6 +81,7 @@ from flimmer.config.training_loader import (
     _auto_enable_moe,
     _is_huggingface_id,
     _resolve_paths,
+    _resolve_model_path,
     _format_validation_error,
     TRAINING_CONFIG_FILENAME,
 )
@@ -1484,6 +1485,78 @@ class TestPathResolution:
         data = {"moe": {}}
         result = _resolve_paths(data, tmp_path)
         assert result["moe"] == {}
+
+    def test_model_path_fallback_to_parent(self, tmp_path: Path):
+        """Model weight in parent dir is found when config is in a subfolder."""
+        # Create models/ at the root, config in a subfolder
+        (tmp_path / "models").mkdir()
+        (tmp_path / "models" / "vae.safetensors").touch()
+        subfolder = tmp_path / "my_project"
+        subfolder.mkdir()
+
+        resolved = _resolve_model_path("./models/vae.safetensors", subfolder)
+        assert resolved == (tmp_path / "models" / "vae.safetensors").resolve()
+
+    def test_model_path_fallback_stops_at_git_root(self, tmp_path: Path):
+        """Fallback stops at .git boundary and doesn't search above it."""
+        # Create models/ above the git root — should NOT be found
+        (tmp_path / "models").mkdir()
+        (tmp_path / "models" / "vae.safetensors").touch()
+
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / ".git").mkdir()
+        subfolder = repo / "my_project"
+        subfolder.mkdir()
+
+        resolved = _resolve_model_path("./models/vae.safetensors", subfolder)
+        # Should return the original (non-existent) resolution, not the one above .git
+        assert resolved == (subfolder / "models" / "vae.safetensors").resolve()
+
+    def test_model_path_no_fallback_when_found_locally(self, tmp_path: Path):
+        """When the model exists relative to config dir, no fallback needed."""
+        (tmp_path / "models").mkdir()
+        (tmp_path / "models" / "vae.safetensors").touch()
+
+        resolved = _resolve_model_path("./models/vae.safetensors", tmp_path)
+        assert resolved == (tmp_path / "models" / "vae.safetensors").resolve()
+
+    def test_model_path_not_found_returns_original(self, tmp_path: Path):
+        """When model doesn't exist anywhere, returns original resolution."""
+        subfolder = tmp_path / "my_project"
+        subfolder.mkdir()
+
+        resolved = _resolve_model_path("./models/vae.safetensors", subfolder)
+        assert resolved == (subfolder / "models" / "vae.safetensors").resolve()
+
+    def test_model_path_absolute_no_fallback(self, tmp_path: Path):
+        """Absolute paths are returned as-is, no fallback."""
+        abs_path = str(tmp_path / "models" / "vae.safetensors")
+        resolved = _resolve_model_path(abs_path, tmp_path / "subfolder")
+        assert resolved == Path(abs_path).resolve()
+
+    def test_resolve_paths_uses_model_fallback(self, tmp_path: Path):
+        """_resolve_paths uses fallback for model weights but not data_config."""
+        # models/ at root, config in subfolder
+        (tmp_path / "models").mkdir()
+        (tmp_path / "models" / "vae.safetensors").touch()
+        subfolder = tmp_path / "my_project"
+        subfolder.mkdir()
+
+        data = {
+            "model": {"vae": "./models/vae.safetensors"},
+            "data_config": "./flimmer_data.yaml",
+        }
+        result = _resolve_paths(data, subfolder)
+
+        # Model path should resolve to parent's models/
+        assert result["model"]["vae"] == str(
+            (tmp_path / "models" / "vae.safetensors").resolve()
+        )
+        # data_config should stay relative to config dir (no fallback)
+        assert result["data_config"] == str(
+            (subfolder / "flimmer_data.yaml").resolve()
+        )
 
 
 # ====================================================================

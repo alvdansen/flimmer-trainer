@@ -237,12 +237,12 @@ def _resolve_paths(data: dict, base_dir: Path) -> dict:
         if "path" in model_block:
             path_str = model_block["path"]
             if isinstance(path_str, str) and not _is_huggingface_id(path_str):
-                model_block["path"] = str(_resolve_one(path_str, base_dir))
-        # Individual weight file paths
+                model_block["path"] = str(_resolve_model_path(path_str, base_dir))
+        # Individual weight file paths (with parent-directory fallback)
         for file_key in ("dit", "dit_high", "dit_low", "vae", "t5"):
             if model_block.get(file_key) and isinstance(model_block[file_key], str):
                 model_block[file_key] = str(
-                    _resolve_one(model_block[file_key], base_dir)
+                    _resolve_model_path(model_block[file_key], base_dir)
                 )
 
     # Resolve save.output_dir
@@ -305,6 +305,45 @@ def _resolve_one(path_str: str, base_dir: Path) -> Path:
     if p.is_absolute():
         return p.resolve()
     return (base_dir / p).resolve()
+
+
+def _resolve_model_path(path_str: str, base_dir: Path) -> Path:
+    """Resolve a model weight path with parent-directory fallback.
+
+    First tries resolving relative to base_dir (the config file's directory).
+    If the file doesn't exist there, walks up parent directories looking for
+    a match. Stops at a .git root or after 5 levels. Returns the first match,
+    or the original resolution if nothing is found.
+
+    This lets users put configs in subfolders (e.g. my_project/train.yaml)
+    while model weights live at the repo root (models/), and ./models/...
+    still resolves correctly.
+    """
+    p = Path(path_str)
+    if p.is_absolute():
+        return p.resolve()
+
+    # Try the config file's directory first (current behavior)
+    candidate = (base_dir / p).resolve()
+    if candidate.exists():
+        return candidate
+
+    # Walk up parents looking for a match
+    search_dir = base_dir.resolve()
+    for _ in range(5):
+        parent = search_dir.parent
+        if parent == search_dir:
+            break  # filesystem root
+        search_dir = parent
+        fallback = (search_dir / p).resolve()
+        if fallback.exists():
+            return fallback
+        # Stop at git root — don't search above the repo
+        if (search_dir / ".git").exists():
+            break
+
+    # Nothing found — return original resolution (error messages stay the same)
+    return candidate
 
 
 def _check_data_config_path(config: FlimmerTrainingConfig) -> None:

@@ -140,7 +140,8 @@ save:
 # ── Logging ─────────────────────────────────────────────────────────
 
 logging:
-  backends: [console]                            # Add "wandb" for W&B tracking
+  backends: [console]                            # Add "wandb" for W&B tracking (requires wandb_project below)
+  # wandb_project: my_training                   # Required if using wandb backend
   log_every_n_steps: 10
 
 
