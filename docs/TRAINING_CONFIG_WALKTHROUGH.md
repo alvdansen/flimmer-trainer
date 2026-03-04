@@ -5,24 +5,11 @@
 
 > **Beta — all Wan 2.2 MoE hyperparameters are experimental.** The defaults below represent our current best understanding, but they're actively being validated. Override anything in YAML to match your own experiments.
 
-This document walks through the two files that make up the Flimmer training config system and how they connect. It's a reference for understanding what exists, what decisions were made, and why.
+This document walks through the files that make up the Flimmer training config system and how they connect. It's a reference for understanding what exists, what decisions were made, and why.
 
 ---
 
-## Two Files, Two Audiences
-
-| File | Who sees it | What it does |
-|------|------------|--------------|
-| `examples/full_train.yaml` | **Users** | The config they fill out to run a training job |
-| `flimmer/config/wan22_training_master.py` | **Nobody** (infrastructure) | Defines valid options, default values, and validation rules |
-
-Users only ever edit the YAML. The Python file is loaded by the config system — users never open it.
-
-A third file, `flimmer/config/training_loader.py`, is the glue: it reads the YAML, looks up variant defaults from the master file, resolves paths, and validates through Pydantic.
-
----
-
-## The YAML: What Users See
+## The YAML: What You Should Edit
 
 The YAML is organized to follow the training flow: set up the model, configure fixed settings, configure the unified phase, configure expert overrides, then output settings.
 
@@ -370,28 +357,6 @@ All constants with `T2V_` or `I2V_` prefixes. Organized into zones:
 - Lists: user replaces entirely (no list merging)
 
 This means a user who sets `optimizer.learning_rate: 1e-4` overrides the default `5e-5` without affecting any other optimizer field.
-
----
-
-## Key Decisions Made During Review
-
-These were decided during the Phase 5 file-by-file review (2026-02-24):
-
-| Decision | Rationale |
-|----------|-----------|
-| `template` → `variant` | The YAML is the config users fill out. "template" implied the Python file was user-facing. `variant` describes the model. |
-| `exclude_modules` removed | Redundant with `target_modules` — both are ways to say "train these, not those" |
-| `freeze_shared_after_fork` removed | Research flag, not validated, not v1 |
-| `fork_criterion` removed | `loss_plateau` detection not built, not v1 |
-| Per-expert rank removed | Rank = matrix dimensions, locked at creation, can't change after fork |
-| `max_epochs` removed from TrainingLoopConfig | Redundant — total duration = unified_epochs + per-expert max_epochs |
-| LR: 2e-4 → 5e-5 | Community recommendations too aggressive for Wan 2.2, especially low-noise expert |
-| Base precision: fp8 → bf16 | Quality first, no quantization shortcuts. fp8 available if VRAM-constrained. |
-| Rank: 32 → 16 | Updated to match production settings |
-| Alpha matches rank | 1.0x neutral scaling (was 0.5x with alpha=16, rank=32) |
-| One master .py, multiple YAMLs | T2V and I2V share the same schema with different default values |
-| Fixed/unified/expert zones | Each YAML section splits into fixed fields first, then overridable unified fields |
-| `wandb_entity` added | Needed for functional W&B integration |
 
 ---
 
