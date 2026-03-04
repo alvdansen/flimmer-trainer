@@ -265,6 +265,7 @@ docs/              Architecture, pipelines, config reference, guides
 - [Training Config Walkthrough](docs/TRAINING_CONFIG_WALKTHROUGH.md) — Training config reference
 - [Local Setup Guide](docs/LOCAL_SETUP.md) — Setting up and running on a local GPU machine
 - [I2V Training Guide](docs/I2V_GUIDE.md) — Image-to-Video training with Wan models
+- [W&B Setup Guide](docs/WANDB_GUIDE.md) — Tracking training runs with Weights & Biases
 
 ## License
 
