@@ -327,6 +327,7 @@ class TestGetFrozenExpertName:
             optimizer_type="adamw8bit", scheduler_type="cosine_with_min_lr",
             min_lr_ratio=0.01, warmup_steps=0, batch_size=1,
             gradient_accumulation_steps=1, caption_dropout_rate=0.1,
+            first_frame_dropout_rate=0.0,
             lora_dropout=0.0, fork_targets=None, block_targets=None,
             resume_from=None, boundary_ratio=None, active_expert=None,
         )
@@ -519,6 +520,7 @@ class TestSaveTrainingStateWandBRunID:
             optimizer_type="adamw8bit", scheduler_type="cosine_with_min_lr",
             min_lr_ratio=0.01, warmup_steps=0, batch_size=1,
             gradient_accumulation_steps=1, caption_dropout_rate=0.1,
+            first_frame_dropout_rate=0.0,
             lora_dropout=0.0, fork_targets=None, block_targets=None,
             resume_from=None, boundary_ratio=None, active_expert=None,
         )

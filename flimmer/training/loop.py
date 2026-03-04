@@ -759,6 +759,10 @@ class TrainingOrchestrator:
         for batch in dataloader:
             # Caption dropout: zero out text embeddings randomly
             batch = self._apply_caption_dropout(batch, phase.caption_dropout_rate)
+            # First-frame dropout: zero out reference image conditioning randomly
+            # Independent roll from caption dropout (sometimes drop text only,
+            # sometimes first frame only, sometimes both, sometimes neither)
+            batch = self._apply_first_frame_dropout(batch, phase.first_frame_dropout_rate)
 
             # Forward + loss + backward
             loss = self._training_step(
@@ -990,6 +994,44 @@ class TrainingOrchestrator:
         batch["text_emb"] = text_emb
         if text_mask is not None:
             batch["text_mask"] = text_mask
+        return batch
+
+    # ------------------------------------------------------------------
+    # First-frame dropout
+    # ------------------------------------------------------------------
+
+    def _apply_first_frame_dropout(
+        self,
+        batch: dict[str, Any],
+        dropout_rate: float,
+    ) -> dict[str, Any]:
+        """Apply first-frame dropout to a batch.
+
+        Zeroes out reference image conditioning with probability dropout_rate,
+        forcing the model to generate video from text alone. Independent from
+        caption dropout -- each is rolled separately (sometimes drop text only,
+        sometimes first frame only, sometimes both, sometimes neither).
+
+        Args:
+            batch: Collated batch dict.
+            dropout_rate: Probability of dropping each sample's reference.
+
+        Returns:
+            Batch with dropped references (modified in-place).
+        """
+        if dropout_rate <= 0.0:
+            return batch
+
+        reference = batch.get("reference")
+        if reference is None or not hasattr(reference, "shape"):
+            return batch
+
+        batch_size = reference.shape[0] if reference.ndim >= 2 else 1
+        for i in range(batch_size):
+            if random.random() < dropout_rate:
+                reference[i].zero_()
+
+        batch["reference"] = reference
         return batch
 
     # ------------------------------------------------------------------

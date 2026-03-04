@@ -110,6 +110,9 @@ class TrainingPhase:
     caption_dropout_rate: float
     """Resolved from expert override or training.caption_dropout_rate."""
 
+    first_frame_dropout_rate: float
+    """Probability of dropping first-frame conditioning. Independent from caption dropout. 0.0 = never drop."""
+
     lora_dropout: float
     """Resolved from expert override (dropout) or lora.dropout."""
 
@@ -286,6 +289,7 @@ def _build_unified_phase(
         batch_size=training.batch_size,  # type: ignore[attr-defined]
         gradient_accumulation_steps=training.gradient_accumulation_steps,  # type: ignore[attr-defined]
         caption_dropout_rate=training.caption_dropout_rate,  # type: ignore[attr-defined]
+        first_frame_dropout_rate=getattr(training, 'first_frame_dropout_rate', 0.0),
         lora_dropout=lora.dropout,  # type: ignore[attr-defined]
         fork_targets=training.unified_targets,  # type: ignore[attr-defined]
         block_targets=training.unified_block_targets,  # type: ignore[attr-defined]
@@ -342,6 +346,10 @@ def _build_expert_phase(
         caption_dropout_rate=_resolve(
             overrides.caption_dropout_rate,  # type: ignore[attr-defined]
             training.caption_dropout_rate,  # type: ignore[attr-defined]
+        ),
+        first_frame_dropout_rate=_resolve(
+            getattr(overrides, 'first_frame_dropout_rate', None),
+            getattr(training, 'first_frame_dropout_rate', 0.0),
         ),
         lora_dropout=_resolve(overrides.dropout, lora.dropout),  # type: ignore[attr-defined]
         fork_targets=_resolve(overrides.fork_targets, training.unified_targets),  # type: ignore[attr-defined]

@@ -303,6 +303,8 @@ class TrainingLogger:
             print(f"    Batch size:     {phase.batch_size}")
             print(f"    Grad accum:     {phase.gradient_accumulation_steps}")
             print(f"    Caption dropout: {phase.caption_dropout_rate:.1%}")
+            if hasattr(phase, 'first_frame_dropout_rate') and phase.first_frame_dropout_rate > 0:
+                print(f"    First-frame dropout: {phase.first_frame_dropout_rate:.1%}")
             print(f"    LoRA dropout:   {phase.lora_dropout:.1%}")
 
             if phase.fork_targets:
