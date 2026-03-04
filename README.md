@@ -2,7 +2,7 @@
 
 Video LoRA training toolkit for diffusion transformer models. Starting with Wan 2.1 and Wan 2.2 (T2V and I2V), with more model integrations planned.
 
-> **Beta release** — Flimmer is functional and producing results, but this is an early release. Training defaults, config schemas, and CLI interfaces may change. MoE hyperparameters are actively being validated. Local scripts are included but lightly tested.
+> **Beta release** — Flimmer is functional and producing results, but this is an early release. Training defaults, config schemas, and CLI interfaces may change. MoE hyperparameters are actively being validated. Local scripts are included but lightly tested. The phase system has also been lightly tested, please flag any issues.
 
 Built by [Alvdansen Labs](https://github.com/alvdansen).
 
@@ -24,7 +24,7 @@ bash scripts/train.sh --config train.yaml        # train
 
 See [Local Setup Guide](docs/LOCAL_SETUP.md) for full options and project-based workflows.
 
-### Using Python commands (power users)
+### Using Python commands 
 
 **Already have a prepared dataset?**
 
@@ -257,12 +257,6 @@ examples/          Example YAML configs (data, training, projects)
 docs/              Architecture, pipelines, config reference, guides
 ```
 
-## Philosophy
-
-- **Curator-first.** Datasets and aesthetic judgment drive technical decisions, not hyperparameter optimization.
-- **Video-native.** Videos are temporally coherent sequences, not stacked images.
-- **Standalone tools.** Data preparation works with any trainer, not just Flimmer.
-- **Validate before you compute.** Catch problems before burning GPU time.
 
 ## Documentation
 
