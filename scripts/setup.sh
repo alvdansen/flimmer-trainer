@@ -222,13 +222,23 @@ download_weight() {
     fi
 
     echo "  [download] $dest_name"
+    # Use a local temp cache to avoid filling ~/.cache/huggingface with
+    # duplicate blobs. Each file is downloaded here, moved to models/,
+    # and the temp cache is cleaned — so disk only needs space for one
+    # weight file at a time rather than all of them simultaneously.
+    local tmp_cache="$MODELS_DIR/.hf_tmp"
     python3 -c "
 from huggingface_hub import hf_hub_download
-import shutil
-cached = hf_hub_download('$repo', '$repo_path')
-shutil.copy2(cached, '$dest')
+import shutil, os
+tmp_cache = '$tmp_cache'
+os.makedirs(tmp_cache, exist_ok=True)
+cached = hf_hub_download('$repo', '$repo_path', cache_dir=tmp_cache)
+shutil.move(cached, '$dest')
 print(f'    Saved: $dest_name')
+# Clean temp cache to free disk space for the next download
+shutil.rmtree(tmp_cache, ignore_errors=True)
 " || {
+        rm -rf "$tmp_cache" 2>/dev/null
         echo "  ERROR: Failed to download $dest_name from $repo"
         echo "  Check your internet connection and HuggingFace access."
         echo "  For gated models, run: huggingface-cli login"
@@ -287,6 +297,39 @@ else
     echo ""
     echo "Files that already exist will be skipped."
     echo ""
+
+    # ── Disk space check ──────────────────────────────────────────
+    # Estimate how much space is needed for files not yet downloaded.
+    # Each file only needs space for itself (temp cache is cleaned
+    # after each download), so we check against the largest single
+    # file plus a buffer.
+
+    check_disk_space() {
+        local needed_gb="$1"
+        local avail_gb
+        avail_gb=$(python3 -c "
+import shutil
+total, used, free = shutil.disk_usage('$MODELS_DIR')
+print(f'{free / (1024**3):.1f}')
+")
+        echo "Disk space available: ${avail_gb} GB (need ~${needed_gb} GB for remaining downloads)"
+        if python3 -c "exit(0 if float('$avail_gb') >= float('$needed_gb') else 1)"; then
+            echo ""
+        else
+            echo ""
+            echo "ERROR: Not enough disk space."
+            echo "  Available: ${avail_gb} GB"
+            echo "  Required:  ~${needed_gb} GB (largest single file + overhead)"
+            echo ""
+            echo "  Free up space or use a larger volume, then re-run."
+            exit 1
+        fi
+    }
+
+    case "$VARIANT" in
+        2.2_t2v|2.2_i2v)  check_disk_space 35 ;;   # ~28.6 GB largest DiT + ~11.4 GB T5 if not cached
+        2.1_i2v_480p|2.1_i2v_720p)  check_disk_space 38 ;;   # ~32.8 GB DiT + overhead
+    esac
 
     # ── Shared components (all variants) ────────────────────────────
 
@@ -359,14 +402,14 @@ fi
 echo "=== Setup Complete ==="
 echo ""
 echo "Next steps:"
-echo "  1. Prepare your dataset (see examples/ for data config templates)"
+echo "  1. Prepare your dataset (see config_templates/ for data config templates)"
 echo "  2. Run scripts/prepare.sh to encode latents"
 echo "  3. Run scripts/train.sh to start training"
 echo ""
-echo "Example configs (see examples/README.md for full guide):"
-echo "  examples/training/t2v_wan22.yaml        T2V training (Wan 2.2)"
-echo "  examples/training/i2v_wan21.yaml        I2V training (Wan 2.1)"
-echo "  examples/training/i2v_wan22.yaml        I2V training (Wan 2.2 MoE)"
-echo "  examples/projects/i2v_moe_phases.yaml   Multi-phase MoE workflow"
-echo "  examples/projects/t2v_phases.yaml       Multi-phase dataset workflow"
+echo "Example configs (see config_templates/README.md for full guide):"
+echo "  config_templates/training/t2v_wan22.yaml        T2V training (Wan 2.2)"
+echo "  config_templates/training/i2v_wan21.yaml        I2V training (Wan 2.1)"
+echo "  config_templates/training/i2v_wan22.yaml        I2V training (Wan 2.2 MoE)"
+echo "  config_templates/projects/i2v_moe_phases.yaml   Multi-phase MoE workflow"
+echo "  config_templates/projects/t2v_phases.yaml       Multi-phase dataset workflow"
 echo ""
