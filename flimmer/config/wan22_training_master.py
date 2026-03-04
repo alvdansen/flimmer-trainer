@@ -1351,8 +1351,9 @@ class TrainingLoopConfig(BaseModel):
         default=T2V_BASE_MODEL_PRECISION,
         description=(
             "Precision for the frozen base model weights. bf16 is the quality-first "
-            "default. fp8 is available if VRAM-constrained but introduces "
-            "quantization artifacts."
+            "default. fp8 uses 8-bit quantization (saves ~14GB for a 14B model). "
+            "fp8_scaled uses 4-bit NF4 quantization (saves ~21GB, more quality loss). "
+            "Quantized modes require bitsandbytes and a CUDA GPU."
         ),
     )
     caption_dropout_rate: float = Field(

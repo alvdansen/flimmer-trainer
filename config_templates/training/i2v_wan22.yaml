@@ -85,7 +85,7 @@ scheduler:
 
 training:
   mixed_precision: bf16
-  base_model_precision: bf16
+  base_model_precision: bf16               # bf16 | fp8 (8-bit, saves ~14GB) | fp8_scaled (4-bit NF4, saves ~21GB)
   gradient_checkpointing: true
   seed: 42
 

@@ -159,6 +159,12 @@ fi
 # shellcheck disable=SC1091
 source "$VENV_DIR/bin/activate"
 
+# -- CUDA Memory Optimization --------------------------------------------
+# expandable_segments reduces CUDA memory fragmentation by allowing the
+# allocator to use non-contiguous memory blocks. Without this, PyTorch
+# can report OOM even with GBs of reserved-but-unallocated memory.
+export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
+
 # -- Handle --tmux -----------------------------------------------------
 
 if [[ "$USE_TMUX" = true ]]; then

@@ -224,11 +224,14 @@ class TrainingOrchestrator:
             self._resuming = True
 
         # Load model and move to GPU
+        # Quantized models (fp8/fp8_scaled) are already on GPU from the
+        # loading step — bitsandbytes requires CUDA for quantization.
         self._model = self._backend.load_model(self._config.model)
-        if hasattr(self._model, "to"):
-            import torch
-            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            self._model.to(device)
+        if not getattr(self._backend, "is_quantized", False):
+            if hasattr(self._model, "to"):
+                import torch
+                device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                self._model.to(device)
         if self._config.training.gradient_checkpointing:
             self._backend.setup_gradient_checkpointing(self._model)
 
@@ -497,11 +500,12 @@ class TrainingOrchestrator:
                 expert=phase.active_expert,
             )
 
-        # Ensure model is on GPU
-        if hasattr(self._model, "to"):
-            import torch
-            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            self._model.to(device)
+        # Ensure model is on GPU (quantized models are already there)
+        if not getattr(self._backend, "is_quantized", False):
+            if hasattr(self._model, "to"):
+                import torch
+                device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                self._model.to(device)
         if self._config.training.gradient_checkpointing:
             self._backend.setup_gradient_checkpointing(self._model)
 

@@ -133,6 +133,10 @@ class WanModelBackend:
         # Only populated when preload_experts=True.
         self._cached_state_dicts: dict[str, dict[str, Any]] = {}
 
+        # Whether the model was loaded with bitsandbytes quantization.
+        # Quantized models are already on GPU and must NOT be .to(device)'d.
+        self._is_quantized: bool = False
+
     # -- ModelBackend protocol properties --
 
     @property
@@ -149,6 +153,16 @@ class WanModelBackend:
     def supports_reference_image(self) -> bool:
         """Whether this model accepts a reference image as conditioning."""
         return self._is_i2v
+
+    @property
+    def is_quantized(self) -> bool:
+        """Whether the model was loaded with bitsandbytes quantization.
+
+        Quantized models are already on GPU from the loading step and must
+        NOT be moved with .to(device). The training loop checks this to
+        skip the manual device transfer.
+        """
+        return self._is_quantized
 
     # -- ModelBackend protocol methods --
 
@@ -188,14 +202,22 @@ class WanModelBackend:
                 f"Install with: pip install 'flimmer[wan]'"
             )
 
-        # Determine dtype from config
+        # Determine dtype and quantization from config
         dtype_str = getattr(config, "base_model_precision", "bf16")
+        quantize = dtype_str in ("fp8", "fp8_scaled")
+
         dtype_map = {
             "bf16": torch.bfloat16,
             "fp16": torch.float16,
             "fp32": torch.float32,
         }
+        # Quantized models compute in bf16 but store weights in int8/nf4
         dtype = dtype_map.get(dtype_str, torch.bfloat16)
+
+        # Build quantization config if requested
+        bnb_config = None
+        if quantize:
+            bnb_config = self._make_bnb_config(dtype_str, torch.bfloat16)
 
         # Check for individual safetensors file path
         single_file = self._resolve_single_file_path(expert)
@@ -218,14 +240,28 @@ class WanModelBackend:
                 # Fallback for backwards compatibility -- matches original behavior
                 config_repo = "Wan-AI/Wan2.2-T2V-A14B-Diffusers"
             try:
+                load_kwargs: dict[str, Any] = {
+                    "torch_dtype": dtype,
+                    "config": config_repo,
+                    "subfolder": subfolder,
+                }
+                if bnb_config is not None:
+                    # Quantized loading places model directly on GPU
+                    load_kwargs["quantization_config"] = bnb_config
+                else:
+                    load_kwargs["device"] = "cpu"
+
                 model = WanTransformer3DModel.from_single_file(
-                    single_file,
-                    torch_dtype=dtype,
-                    device="cpu",
-                    config=config_repo,
-                    subfolder=subfolder,
+                    single_file, **load_kwargs,
                 )
             except Exception as e:
+                if bnb_config is not None:
+                    raise ModelBackendError(
+                        f"Failed to load quantized Wan model from "
+                        f"'{single_file}': {e}\n"
+                        f"Quantization requires bitsandbytes and a CUDA GPU. "
+                        f"Set base_model_precision to 'bf16' to disable."
+                    ) from e
                 raise ModelBackendError(
                     f"Failed to load Wan model from '{single_file}': {e}\n"
                     f"Check that the file exists and is a valid safetensors "
@@ -249,17 +285,20 @@ class WanModelBackend:
 
             try:
                 model_path = Path(self._model_path)
+                load_kwargs = {
+                    "subfolder": subfolder,
+                    "torch_dtype": dtype,
+                }
+                if bnb_config is not None:
+                    load_kwargs["quantization_config"] = bnb_config
+
                 if model_path.is_dir():
                     model = WanTransformer3DModel.from_pretrained(
-                        str(model_path),
-                        subfolder=subfolder,
-                        torch_dtype=dtype,
+                        str(model_path), **load_kwargs,
                     )
                 else:
                     model = WanTransformer3DModel.from_pretrained(
-                        self._model_path,
-                        subfolder=subfolder,
-                        torch_dtype=dtype,
+                        self._model_path, **load_kwargs,
                     )
             except Exception as e:
                 raise ModelBackendError(
@@ -269,14 +308,55 @@ class WanModelBackend:
                     f"exist."
                 ) from e
 
+        # Track quantization state
+        if bnb_config is not None:
+            self._is_quantized = True
+
         self._current_expert = expert
 
         # If preload_experts is enabled and this is MoE, cache the other
         # expert's state dict to CPU for fast switching later.
+        # State-dict swap is incompatible with quantized models — the
+        # quantized weight format (int8/nf4) can't be swapped via
+        # load_state_dict. Fall back to disk reload for expert switching.
+        if self._is_quantized and self._preload_experts:
+            self._preload_experts = False
         if self._preload_experts and self._is_moe and expert is not None:
             self._preload_other_expert(config, expert, dtype)
 
         return model
+
+    @staticmethod
+    def _make_bnb_config(precision: str, compute_dtype: Any) -> Any:
+        """Create a BitsAndBytesConfig for quantized model loading.
+
+        fp8 uses int8 quantization (linear layer weights stored as 8-bit
+        integers with per-tensor absmax scaling). Saves ~50% VRAM for the
+        frozen base model — a 14B model drops from ~28GB to ~14GB.
+
+        fp8_scaled uses NF4 quantization (4-bit NormalFloat with double
+        quantization). Saves ~75% VRAM but introduces more quantization
+        noise. Best for extremely VRAM-constrained setups.
+
+        Args:
+            precision: 'fp8' for 8-bit or 'fp8_scaled' for 4-bit NF4.
+            compute_dtype: Torch dtype for dequantized computation (bf16).
+
+        Returns:
+            BitsAndBytesConfig instance ready for from_single_file() or
+            from_pretrained().
+        """
+        from diffusers import BitsAndBytesConfig
+
+        if precision == "fp8":
+            return BitsAndBytesConfig(load_in_8bit=True)
+        else:
+            # fp8_scaled → NF4 4-bit for maximum VRAM savings
+            return BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_compute_dtype=compute_dtype,
+                bnb_4bit_quant_type="nf4",
+            )
 
     def _preload_other_expert(
         self,
