@@ -35,6 +35,8 @@ data_config: ./holly/flimmer_data.yaml
 
 **`variant`** is the key field. It tells the loader which architecture defaults to apply. Setting `variant: 2.2_t2v` auto-fills: `is_moe: true`, `in_channels: 16`, `num_layers: 40`, `boundary_ratio: 0.875`, `flow_shift: 5.0`. The user can override any of these if needed — the commented-out fields show what's available.
 
+I2V variants (`2.2_i2v`, `2.1_i2v_480p`, `2.1_i2v_720p`) auto-fill different defaults: `in_channels: 36`, `flow_shift: 3.0`, and for Wan 2.2 I2V, `boundary_ratio: 0.900`. See the [I2V Training Guide](I2V_GUIDE.md) for a full comparison.
+
 **Two ways to point at model weights:**
 
 1. **Individual files** (recommended): `dit_high`/`dit_low` for MoE experts (or `dit` for non-MoE), plus `vae` and `t5`. Each points to a single `.safetensors` or `.pth` file. This is how models are distributed by Comfy-Org and how cloud pod setup scripts download them.
@@ -137,6 +139,8 @@ Fixed settings: precision (`bf16` for both training and frozen base model — no
 
 Unified phase settings: `unified_epochs` controls how long both experts share a single LoRA before forking. `unified_targets` and `unified_block_targets` can narrow what gets trained during the shared phase.
 
+**I2V differences:** I2V uses `unified_epochs: 15` (vs T2V's 10) because the reference image adds conditioning signal that benefits from more shared training. Caption dropout is higher at 0.15 (vs 0.10) to push the model toward relying on the reference image over text. The optional `first_frame_dropout_rate` (default 0, off) can be set to occasionally drop the reference image during training — useful if the model starts ignoring text prompts.
+
 **Why bf16 for base model?** Quality first. fp8 is available if VRAM-constrained but introduces quantization artifacts. The master file documents this tradeoff.
 
 ### Section 6: MoE Expert Fork
@@ -168,6 +172,8 @@ moe:
 | Fork-and-specialize | `fork_enabled: true` + `unified_epochs > 0` | Unified LoRA warmup → fork into per-expert copies → each trains independently |
 | Unified only | `fork_enabled: false` | One LoRA on both experts, no forking |
 | Expert from scratch | `fork_enabled: true` + `unified_epochs: 0` | Skip unified, go straight to per-expert |
+
+**I2V boundary:** I2V uses `boundary_ratio: 0.900` (vs T2V's 0.875). This shifts where the high-noise expert hands off to the low-noise expert, giving the low-noise expert a narrower but more focused range for I2V's detail-preservation needs.
 
 **Per-expert overrides** — `null` means inherit from the unified/optimizer/scheduler defaults. Only set what you want to change. The full list of overridable fields per expert:
 
@@ -378,8 +384,10 @@ This means a user who sets `optimizer.learning_rate: 1e-4` overrides the default
 | Batch size | 1 | Video is memory-heavy |
 | Mixed precision | bf16 | Training precision |
 | Base model precision | bf16 | Quality first — fp8 available if VRAM-constrained |
-| Flow shift | 5.0 | Wan 2.2 flow matching parameter |
-| Timestep boundary | 0.875 | Where high-noise expert hands off to low-noise |
+| Flow shift | 5.0 (T2V) / 3.0 (I2V) | Wan 2.2 flow matching parameter |
+| Timestep boundary | 0.875 (T2V) / 0.900 (I2V) | Where high-noise expert hands off to low-noise |
 | Caption dropout | 0.10 (T2V) / 0.15 (I2V) | Forces reliance on visual conditioning |
 | Save interval | 5 epochs | Checkpoint frequency |
 | Seed | 42 | Reproducibility |
+
+For a complete I2V reference, see [I2V Training Guide](I2V_GUIDE.md).
