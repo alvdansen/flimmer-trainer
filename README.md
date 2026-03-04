@@ -115,39 +115,15 @@ python -m flimmer.training train -c train.yaml   # train
 
 ## Training Modes
 
-Flimmer supports both standard and experimental MoE training for Wan models:
+**Standard training** — a single LoRA trained with one config from start to finish. Works with Wan 2.1 (single transformer) and Wan 2.2 (both experts trained together as one). This is the conventional approach used by all trainers.
 
-**Standard training** — a single LoRA trained across the full model. Works with Wan 2.1 (single transformer) and Wan 2.2 (both experts trained together as one). This is the conventional approach used by all trainers.
+**Phased training** — break training into stages, each with its own learning rate, epoch count, dataset, or training strategy, while the LoRA checkpoint carries forward between phases. Use it for curriculum training (close-ups first, then full-body), dataset progression, or MoE expert specialization. We believe phased training produces better LoRAs than single-pass training and will be sharing more on this.
 
-**MoE phased training (experimental)** — for Wan 2.2's dual-expert architecture. The model has two transformer experts that specialize by noise level: one handles early denoising (global composition, motion) and the other handles late denoising (fine detail, texture).
-
-Phased training lets you:
-1. **Unified phase** — train a single LoRA across both experts together (warmup)
-2. **Fork** — split into two separate LoRAs, one per expert
-3. **Specialize** — train each expert independently with its own learning rate, epochs, and other settings
-
-This is an experimental approach — the theory is that each expert benefits from different training intensities, but this is still being validated. You can configure everything in YAML:
-
-```yaml
-moe:
-  fork_enabled: true    # set to false for standard unified-only training
-
-  high_noise:
-    learning_rate: 1e-4
-    max_epochs: 30
-
-  low_noise:
-    learning_rate: 8e-5
-    max_epochs: 50
-```
-
-> **All Wan 2.2 MoE hyperparameters are experimental.** This is a beta — defaults will evolve as we validate results. Override anything in YAML to match your own experiments.
-
-**Base strategy (open question):** For MoE phased training, the unified phase produces a shared LoRA that gets forked. What the low-noise expert starts from after the fork matters — should it inherit the merged unified weights, or start from a low-noise-only baseline? We're actively running experiments to answer this. A merge script is included in `runpod/merge_expert_weights.py`.
+**MoE expert specialization** — for Wan 2.2's dual-expert architecture. The model has two transformer experts that specialize by noise level: one handles early denoising (global composition, motion) and the other handles late denoising (fine detail, texture). Phased training enables a unified base phase that trains both experts together before forking into separate per-expert LoRAs. This is experimental — MoE hyperparameters are still being validated.
 
 ## Phase System
 
-Phase training breaks LoRA training into stages — each phase can use different datasets, learning rates, or training strategies while the LoRA checkpoint carries forward automatically. Use it for dataset progression (close-ups first, then full-body) or MoE expert specialization. See the [Phase Training Guide](docs/PHASE_TRAINING.md) for a full walkthrough.
+The phase system manages multi-stage training runs. Each phase gets its own overrides on top of a shared base config, and the LoRA checkpoint carries forward automatically. See the [Phase Training Guide](docs/PHASE_TRAINING.md) for a full walkthrough.
 
 A project config defines phases as a sequence of overrides on top of a base training config:
 
@@ -188,7 +164,25 @@ bash scripts/train.sh --project project.yaml --status    # check phase progress
 bash scripts/train.sh --project project.yaml --all       # run all pending phases
 ```
 
-For single-config training (no phases), use `--config` instead of `--project`. See `examples/` for both approaches.
+For single-config training (no phases), use `--config` instead of `--project`. See `config_templates/` for both approaches.
+
+## Recommended Project Layout
+
+Keep your config files alongside your dataset in one folder. All paths in configs resolve relative to the config file's location, so this keeps paths simple:
+
+```
+my_project/
+  flimmer_data.yaml        # data config (copied from config_templates/data/)
+  flimmer_train.yaml       # training config (copied from config_templates/training/)
+  project.yaml             # optional — only if using multi-phase
+  video_clips/             # your clips + sidecar caption .txt files
+    clip_001.mp4
+    clip_001.txt
+    clip_002.mp4
+    clip_002.txt
+```
+
+With this layout, your training config just says `data_config: ./flimmer_data.yaml` and your data config says `path: ./video_clips` — no absolute paths needed.
 
 ## Running
 
@@ -255,7 +249,7 @@ flimmer/
   phases/          Phase system: model definitions and phase resolution
   project/         Multi-phase project runner
 scripts/           Local run scripts (setup, prepare, train)
-examples/          Example YAML configs (data, training, projects)
+config_templates/  Example YAML configs (data, training, projects)
 docs/              Architecture, pipelines, config reference, guides
 ```
 
