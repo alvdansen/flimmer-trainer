@@ -141,7 +141,7 @@ else
 fi
 
 echo "Upgrading pip..."
-pip install --upgrade pip --quiet
+pip install --upgrade pip
 echo "  Done."
 echo ""
 
@@ -150,7 +150,7 @@ echo ""
 
 echo "Installing flimmer with all extras..."
 echo "  (This includes torch, diffusers, transformers, peft, etc.)"
-pip install -e "$REPO_DIR[all]" --quiet
+pip install -e "$REPO_DIR[all]"
 echo "  Done."
 echo ""
 
