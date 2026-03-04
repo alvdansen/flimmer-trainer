@@ -168,21 +168,21 @@ For single-config training (no phases), use `--config` instead of `--project`. S
 
 ## Recommended Project Layout
 
-Keep your config files alongside your dataset in one folder. All paths in configs resolve relative to the config file's location, so this keeps paths simple:
+Keep your config files alongside your dataset in one folder. All paths in configs resolve relative to the config file's location, so this keeps paths simple. You set up the configs and clips — Flimmer creates everything else:
 
 ```
 my_project/
-  flimmer_data.yaml        # data config (copied from config_templates/data/)
-  flimmer_train.yaml       # training config (copied from config_templates/training/)
-  project.yaml             # optional — only if using multi-phase
-  video_clips/             # your clips + sidecar caption .txt files
+  flimmer_data.yaml        # you create — data config
+  flimmer_train.yaml       # you create — training config
+  project.yaml             # you create — optional, only for multi-phase
+  video_clips/             # you create — clips + sidecar .txt captions
     clip_001.mp4
     clip_001.txt
-    clip_002.mp4
-    clip_002.txt
+  cache/                   # created by prepare.sh — pre-encoded latents
+  output/                  # created by training — checkpoints, samples, final LoRA
 ```
 
-With this layout, your training config just says `data_config: ./flimmer_data.yaml` and your data config says `path: ./video_clips` — no absolute paths needed.
+Your training config just says `data_config: ./flimmer_data.yaml` and your data config says `path: ./video_clips` — no absolute paths needed.
 
 Starter projects you can copy and edit:
 - `example_simple/` — single-config training (no phases)

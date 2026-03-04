@@ -4,14 +4,31 @@ Single-config training — one pass, no phases. Copy this folder, add your clips
 
 ## Layout
 
+You set up your configs and dataset. Flimmer creates the rest.
+
 ```
 my_project/
-  flimmer_data.yaml      <- data config (what clips, what format)
-  flimmer_train.yaml     <- training config (model, hyperparameters, output)
-  video_clips/           <- your clips + sidecar .txt captions
+  flimmer_data.yaml        <- you create: data config
+  flimmer_train.yaml       <- you create: training config
+  video_clips/             <- you create: clips + .txt captions
     clip_001.mp4
     clip_001.txt
-    ...
+    clip_002.mp4
+    clip_002.txt
+  cache/                   <- created by prepare.sh (pre-encoded latents)
+    cache_manifest.json
+    latents/
+    text/
+  output/                  <- created by training
+    full_noise/               checkpoints per phase
+      my_lora_epoch005.safetensors
+      my_lora_epoch010.safetensors
+    final/                    merged LoRA for inference
+      my_lora_merged.safetensors
+    samples/                  sample videos (if sampling enabled)
+      fn_epoch005/
+    training_state.json       resume state
+    resolved_config.yaml      snapshot of config used
 ```
 
 ## Steps
