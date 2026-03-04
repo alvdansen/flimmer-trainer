@@ -2,7 +2,9 @@
 # Data Config — Example Phased Project
 # ══════════════════════════════════════════════════════════════════════
 #
-# Same as any data config — describes your dataset.
+# Same as any data config — describes your dataset. Two layouts supported:
+#   Flat layout:    path: ./video_clips  — .mp4 + .txt files side by side
+#   Flimmer layout: path: .              — training/targets/ + training/signals/
 #
 # In a phased project, each phase can optionally point to a different
 # data config (e.g., close-ups only, then full-body). If your phases
@@ -15,7 +17,7 @@ dataset:
   use_case: character                  # character | style | motion | object
 
 datasets:
-  - path: ./video_clips               # folder with .mp4 + .txt pairs
+  - path: ./video_clips               # flat layout — change to . for flimmer layout
     repeats: 1
 
 video:

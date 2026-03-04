@@ -170,21 +170,40 @@ For single-config training (no phases), use `--config` instead of `--project`. S
 
 ## Recommended Project Layout
 
-Keep your config files alongside your dataset in one folder. All paths in configs resolve relative to the config file's location, so this keeps paths simple. You set up the configs and clips — Flimmer creates everything else:
+Keep your config files alongside your dataset in one folder. All paths in configs resolve relative to the config file's location, so this keeps paths simple. You set up the configs and clips — Flimmer creates everything else.
 
+Two dataset layouts are supported (auto-detected):
+
+**Flat layout** — simplest, good for small datasets:
 ```
 my_project/
-  flimmer_data.yaml        # you create — data config
+  flimmer_data.yaml        # you create — data config (path: ./video_clips)
   flimmer_train.yaml       # you create — training config
-  project.yaml             # you create — optional, only for multi-phase
-  video_clips/             # you create — clips + sidecar .txt captions
+  video_clips/             # you create — clips + .txt captions side by side
     clip_001.mp4
     clip_001.txt
-  cache/                   # created by prepare.sh — pre-encoded latents
-  output/                  # created by training — checkpoints, samples, final LoRA
+  cache/                   # created by encoding — pre-encoded latents
+  output/                  # created by training — checkpoints, final LoRA
 ```
 
-Your training config just says `data_config: ./flimmer_data.yaml` and your data config says `path: ./video_clips` — no absolute paths needed.
+**Flimmer layout** — structured, used by `flimmer.video` pipeline:
+```
+my_project/
+  flimmer_data.yaml        # you create — data config (path: .)
+  flimmer_train.yaml       # you create — training config
+  training/                # created by flimmer.video pipeline
+    targets/               # video clips
+      clip_001.mp4
+    signals/
+      captions/            # .txt caption files
+        clip_001.txt
+      references/          # auto-extracted first frames (I2V)
+        clip_001.png
+  cache/                   # created by encoding
+  output/                  # created by training
+```
+
+The only difference in your data config is the path: `path: ./video_clips` for flat, `path: .` for flimmer layout.
 
 Starter projects you can copy and edit:
 - `example_simple/` — single-config training (no phases)

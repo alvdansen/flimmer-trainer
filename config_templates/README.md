@@ -22,21 +22,34 @@ data config          training config          project config (optional)
 
 ## Recommended Project Layout
 
-Keep your config files alongside your dataset in one folder. All paths in configs resolve relative to the config file's location, so this keeps paths simple:
+Keep your config files alongside your dataset in one folder. All paths resolve relative to the config file's location.
 
+**Flat layout** — simplest, good for small datasets:
 ```
 my_project/
-  flimmer_data.yaml        # data config (copied from data/standard.yaml)
-  flimmer_train.yaml       # training config (copied from training/)
-  project.yaml             # optional — only if using multi-phase
-  video_clips/             # your clips + sidecar caption .txt files
+  flimmer_data.yaml        # data config — path: ./video_clips
+  flimmer_train.yaml       # training config
+  video_clips/             # clips + .txt captions side by side
     clip_001.mp4
     clip_001.txt
-    clip_002.mp4
-    clip_002.txt
 ```
 
-With this layout, your training config just says `data_config: ./flimmer_data.yaml` and your data config says `path: ./video_clips` — no absolute paths needed.
+**Flimmer layout** — structured, used by `flimmer.video` pipeline:
+```
+my_project/
+  flimmer_data.yaml        # data config — path: .
+  flimmer_train.yaml       # training config
+  training/
+    targets/               # video clips
+      clip_001.mp4
+    signals/
+      captions/            # .txt captions
+        clip_001.txt
+      references/          # first frames (auto-extracted for I2V)
+        clip_001.png
+```
+
+Flimmer auto-detects which layout you're using. The only difference in your data config is the `path:` value.
 
 ## Do I Need a Project?
 

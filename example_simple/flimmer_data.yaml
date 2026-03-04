@@ -2,8 +2,9 @@
 # Data Config — Example Simple Project
 # ══════════════════════════════════════════════════════════════════════
 #
-# Describes your dataset. Point "path" at the folder containing your
-# video clips and their sidecar .txt caption files.
+# Describes your dataset. Two layouts supported (auto-detected):
+#   Flat layout:    path: ./video_clips  — .mp4 + .txt files side by side
+#   Flimmer layout: path: .              — training/targets/ + training/signals/
 #
 # Copy this file into your own project folder and edit to match.
 # See config_templates/data/ for more options (minimal, standard, full).
@@ -15,7 +16,7 @@ dataset:
   use_case: character                  # character | style | motion | object
 
 datasets:
-  - path: ./video_clips               # folder with .mp4 + .txt pairs
+  - path: ./video_clips               # flat layout — change to . for flimmer layout
     repeats: 1
 
 video:

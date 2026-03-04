@@ -8,14 +8,17 @@ These are progressive — start minimal and add fields as you need them.
 
 ### `minimal.yaml` — Start here
 
-Just a path to your clips folder. Everything else uses sensible defaults (16fps, 480p, sidecar .txt captions).
+Just a path to your clips. Everything else uses sensible defaults (16fps, 480p, sidecar .txt captions).
 
 ```yaml
 dataset:
-  path: ./video_clips
+  path: ./video_clips    # flat layout — .mp4 + .txt side by side
+  # path: .              # flimmer layout — training/targets/ + training/signals/
 ```
 
-This is enough to train. Your folder should have pairs like `clip_001.mp4` + `clip_001.txt`.
+**Flat layout:** Your folder has pairs like `clip_001.mp4` + `clip_001.txt` side by side.
+
+**Flimmer layout:** Used when you ran `flimmer.video` pipeline. Clips in `training/targets/`, captions in `training/signals/captions/`. Flimmer auto-detects which layout you have.
 
 ### `standard.yaml` — Most users land here
 

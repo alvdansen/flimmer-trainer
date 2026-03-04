@@ -3,7 +3,9 @@
 # Just tell Flimmer where your video clips are.
 # Everything else uses sensible defaults for Wan model training.
 #
-# This is all a new user needs to get started.
+# Two layouts supported:
+#   Flat:    path points to folder with .mp4 + .txt side by side
+#   Flimmer: path points to folder containing training/targets/ and training/signals/
 
 dataset:
   path: ./video_clips

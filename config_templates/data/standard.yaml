@@ -2,13 +2,19 @@
 #
 # A character LoRA dataset with anchor word and reference images.
 # This is what most users will write for a typical training project.
+#
+# Dataset path layout:
+#   Flat layout:    path: ./video_clips   — .mp4 + .txt files side by side
+#   Flimmer layout: path: .               — uses training/targets/ + training/signals/
+#
+# Flimmer auto-detects which layout you're using.
 
 dataset:
   name: annika
   use_case: character              # character | style | motion | object
 
 datasets:
-  - path: ./video_clips
+  - path: ./video_clips            # flat layout — change to . for flimmer layout
     repeats: 1
 
 video:

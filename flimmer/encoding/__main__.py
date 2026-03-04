@@ -210,7 +210,7 @@ def cmd_cache_latents(args: argparse.Namespace) -> None:
     # Auto-extract first-frame references for I2V if configured
     from flimmer.config.loader import load_data_config
     data_config = load_data_config(config.data_config)
-    if data_config.controls.images.reference.source == "first_frame":
+    if data_config.controls.images.reference.source == "first_frame" and not args.dry_run:
         dataset_dirs = _get_dataset_dirs(config.data_config)
         count = _auto_extract_first_frames(config.data_config, dataset_dirs)
         if count:

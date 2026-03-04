@@ -2,6 +2,12 @@
 #
 # Every available field. This is what power users and the Flimmer internals use.
 # Most users will never need to touch the quality, bucketing, or metadata sections.
+#
+# Dataset path layout:
+#   Flat layout:    path: ./video_clips   — .mp4 + .txt files side by side
+#   Flimmer layout: path: .               — uses training/targets/ + training/signals/
+#
+# Flimmer auto-detects which layout you're using.
 
 # ─── Dataset Identity ───
 # Who this dataset is and what it's for. Helps the captioner tool make better
@@ -14,7 +20,7 @@ dataset:
 # ─── Dataset Sources ───
 # Multiple folders supported. Each can override global settings for balancing.
 datasets:
-  - path: ./video_clips
+  - path: ./video_clips            # flat layout — change to . for flimmer layout
     repeats: 1                     # times to repeat per epoch (for balancing)
     loss_multiplier: 1.0           # relative training weight
     is_regularization: false       # true = regularization data
