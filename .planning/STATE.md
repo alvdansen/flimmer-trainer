@@ -3,14 +3,30 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Phase 3 context gathered
-last_updated: "2026-03-04T03:07:40.502Z"
-last_activity: 2026-03-04 -- Completed 02-04 (First-Frame Encoder)
+stopped_at: Completed 03-02-PLAN.md
+last_updated: "2026-03-04T03:29:27.910Z"
+last_activity: 2026-03-04 -- Completed 03-02 (Setup Script and Example Configs)
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 7
-  completed_plans: 7
+  total_plans: 10
+  completed_plans: 9
+  percent: 90
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+status: completed
+stopped_at: Phase 3 context gathered
+last_updated: "2026-03-04T03:28:36.068Z"
+last_activity: 2026-03-04 -- Completed 02-04 (First-Frame Encoder)
+progress:
+  [█████████░] 90%
+  completed_phases: 2
+  total_plans: 10
+  completed_plans: 8
 ---
 
 ---
@@ -40,12 +56,12 @@ See: .planning/PROJECT.md (updated 2026-03-03)
 
 ## Current Position
 
-Phase: 2 of 4 (I2V Backend Wan 2.1/2.2) -- COMPLETE
-Plan: 4 of 4 in current phase (02-04 complete)
-Status: Phase 2 Complete
-Last activity: 2026-03-04 -- Completed 02-04 (First-Frame Encoder)
+Phase: 3 of 4 (Local Run Scripts) -- IN PROGRESS
+Plan: 2 of 3 in current phase (03-02 complete)
+Status: Executing Phase 3
+Last activity: 2026-03-04 -- Completed 03-02 (Setup Script and Example Configs)
 
-Progress: [██████████] 100%
+Progress: [████████░░] 80%
 
 ## Performance Metrics
 
@@ -72,6 +88,8 @@ Progress: [██████████] 100%
 | Phase 02 P02 | 4min | 2 tasks | 9 files |
 | Phase 02 P03 | 5min | 2 tasks | 5 files |
 | Phase 02 P04 | 3min | 2 tasks | 6 files |
+| Phase 03 P02 | 3min | 2 tasks | 4 files |
+| Phase 03 P01 | 5min | 1 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -100,6 +118,13 @@ Recent decisions affecting current work:
 - [Phase 02]: PIL over ffmpeg for reference images: single image encoding avoids process overhead
 - [Phase 02]: Reference dedup by source_path in cache-latents prevents re-encoding shared references
 - [Phase 02]: Bucket key parsed for target resolution: reference encoded at video bucket resolution
+- [Phase 03]: hf_hub_download + shutil.copy2 for flat ./models/ structure (avoids --local-dir subdirectory pitfall)
+- [Phase 03]: --variant required unless --skip-downloads to prevent accidental 60+ GB downloads
+- [Phase 03]: I2V configs use safetensors T5 (umt5_xxl_fp16.safetensors) matching setup.sh downloads
+- [Phase 03]: Project YAML uses base_config for fixed settings, phases only override variable params
+- [Phase 03]: merge_phase_config reads full base YAML and patches values (not export_yaml) to preserve model paths
+- [Phase 03]: MoE expert overrides placed under moe.{expert_type} section with fork_enabled=True
+- [Phase 03]: CLI delegates to training CLI via subprocess.run with sys.executable for venv compatibility
 
 ### Pending Todos
 
@@ -111,6 +136,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-04T03:07:40.500Z
-Stopped at: Phase 3 context gathered
-Resume file: .planning/phases/03-local-run-scripts/03-CONTEXT.md
+Last session: 2026-03-04T03:27:36Z
+Stopped at: Completed 03-02-PLAN.md
+Resume file: .planning/phases/03-local-run-scripts/03-02-SUMMARY.md
