@@ -269,12 +269,17 @@ def _resolve_paths(data: dict, base_dir: Path) -> dict:
                     _resolve_one(expert["resume_from"], base_dir)
                 )
 
-    # Resolve sampling.sample_dir
+    # Resolve sampling paths
     sampling_block = data.get("sampling", {})
-    if isinstance(sampling_block, dict) and sampling_block.get("sample_dir"):
-        sampling_block["sample_dir"] = str(
-            _resolve_one(sampling_block["sample_dir"], base_dir)
-        )
+    if isinstance(sampling_block, dict):
+        if sampling_block.get("sample_dir"):
+            sampling_block["sample_dir"] = str(
+                _resolve_one(sampling_block["sample_dir"], base_dir)
+            )
+        if sampling_block.get("lora_override"):
+            sampling_block["lora_override"] = str(
+                _resolve_one(sampling_block["lora_override"], base_dir)
+            )
 
     # Resolve cache.cache_dir (always, even when using default)
     if "cache" not in data:

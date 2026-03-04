@@ -170,6 +170,8 @@ def extract_lora_state_dict(model: Any) -> dict[str, Any]:
     Returns:
         Dict mapping clean parameter names to tensor values.
     """
+    import re
+
     import torch
 
     state_dict: dict[str, Any] = {}
@@ -183,9 +185,10 @@ def extract_lora_state_dict(model: Any) -> dict[str, Any]:
             # Remove 'base_model.model.' prefix
             if clean_name.startswith("base_model.model."):
                 clean_name = clean_name[len("base_model.model."):]
-            # Remove adapter name from LoRA suffix
-            # 'lora_A.default.weight' → 'lora_A.weight'
-            clean_name = clean_name.replace(".default.", ".")
+            # Remove adapter name from LoRA suffix — handles any adapter
+            # name (default, partner, etc.), not just "default"
+            # 'lora_A.partner.weight' → 'lora_A.weight'
+            clean_name = re.sub(r"(lora_[AB])\.\w+\.", r"\1.", clean_name)
             state_dict[clean_name] = param.detach().cpu().clone()
 
     return state_dict
@@ -210,6 +213,8 @@ def inject_lora_state_dict(
     """
     import torch
 
+    import re
+
     # Build a reverse mapping from clean names to model parameter names
     param_map: dict[str, str] = {}
     for name, _ in model.named_parameters():
@@ -217,10 +222,12 @@ def inject_lora_state_dict(
             clean_name = name
             if clean_name.startswith("base_model.model."):
                 clean_name = clean_name[len("base_model.model."):]
-            clean_name = clean_name.replace(".default.", ".")
+            # Strip any adapter name (default, partner, etc.)
+            clean_name = re.sub(r"(lora_[AB])\.\w+\.", r"\1.", clean_name)
             param_map[clean_name] = name
 
     # Load each weight
+    injected = 0
     with torch.no_grad():
         for clean_name, tensor in state_dict.items():
             if clean_name not in param_map:
@@ -234,6 +241,10 @@ def inject_lora_state_dict(
                 obj = getattr(obj, part)
             param = getattr(obj, parts[-1])
             param.copy_(tensor.to(param.device, param.dtype))
+            injected += 1
+
+    if injected == 0 and len(state_dict) > 0:
+        print(f"  WARNING: 0/{len(state_dict)} LoRA weights injected — key mismatch!")
 
 
 def remove_lora_from_model(model: Any) -> Any:

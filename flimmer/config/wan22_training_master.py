@@ -1686,6 +1686,15 @@ class SamplingConfig(BaseModel):
             "Relative to config file location."
         ),
     )
+    lora_override: str | None = Field(
+        default=None,
+        description=(
+            "Path to a specific LoRA checkpoint (.safetensors) to use for "
+            "sample generation instead of the live training weights. "
+            "Useful when you have a favorite checkpoint and want to see "
+            "how prompts look with it. Relative to config file location."
+        ),
+    )
     skip_phases: list[str] = Field(
         default_factory=list,
         description=(

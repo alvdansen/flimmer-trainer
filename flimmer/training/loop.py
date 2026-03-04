@@ -1375,12 +1375,37 @@ class TrainingOrchestrator:
             active_expert_for_inference = "low_noise"
 
         try:
-            # Extract live LoRA weights from PEFT model (not stale lora.state_dict)
-            try:
-                from flimmer.training.wan.modules import extract_lora_state_dict
-                live_state_dict = extract_lora_state_dict(self._model)
-            except Exception:
-                live_state_dict = lora.state_dict
+            # If user specified a LoRA override, load it from disk instead
+            # of using the live training weights. This lets users sample with
+            # a favorite checkpoint while training continues.
+            lora_override = getattr(self._config.sampling, "lora_override", None)
+            if lora_override is not None:
+                from pathlib import Path as _P
+                override_path = _P(lora_override)
+                if override_path.is_file():
+                    from safetensors.torch import load_file
+                    raw = load_file(str(override_path))
+                    # Strip diffusers prefix if present
+                    live_state_dict = {}
+                    for k, v in raw.items():
+                        clean = k
+                        if clean.startswith("transformer_2."):
+                            clean = clean[len("transformer_2."):]
+                        elif clean.startswith("transformer."):
+                            clean = clean[len("transformer."):]
+                        live_state_dict[clean] = v
+                    print(f"  Sampling with LoRA override: {override_path.name}")
+                else:
+                    print(f"  Warning: lora_override not found: {lora_override}, using live weights")
+                    lora_override = None
+
+            if lora_override is None:
+                # Extract live LoRA weights from PEFT model (not stale lora.state_dict)
+                try:
+                    from flimmer.training.wan.modules import extract_lora_state_dict
+                    live_state_dict = extract_lora_state_dict(self._model)
+                except Exception:
+                    live_state_dict = lora.state_dict
 
             samples = self._sampler.generate_samples(
                 pipeline=self._pipeline,
