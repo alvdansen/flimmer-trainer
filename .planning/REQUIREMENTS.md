@@ -31,7 +31,7 @@
 ### Local Run Scripts
 
 - [x] **RUN-01**: Setup script: clone repo, create venv, install deps, verify GPU
-- [ ] **RUN-02**: Training launcher script with CLI args for config selection
+- [x] **RUN-02**: Training launcher script with CLI args for config selection
 - [x] **RUN-03**: Example YAML configs for T2V and I2V training runs
 - [x] **RUN-04**: Scripts work on fresh Linux machine with CUDA/PyTorch
 
@@ -82,7 +82,7 @@
 | I2V-05 | Phase 2 | Complete |
 | I2V-06 | Phase 2 | Complete |
 | RUN-01 | Phase 3 | Complete |
-| RUN-02 | Phase 3 | Pending |
+| RUN-02 | Phase 3 | Complete |
 | RUN-03 | Phase 3 | Complete |
 | RUN-04 | Phase 3 | Complete |
 | DOC-01 | Phase 4 | Pending |
