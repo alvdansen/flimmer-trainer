@@ -259,9 +259,10 @@ def collate_cached_batch(
 ) -> dict[str, Any]:
     """Collate a batch of cached samples into stacked tensors.
 
-    Handles None values (missing captions/references) by keeping them
-    as None in the batch dict. The training loop is responsible for
-    handling missing signals (e.g. caption dropout).
+    Guarantees every value is either a stacked Tensor or None — never
+    a Python list. If all samples have None for a key (e.g. reference
+    in T2V), the result is None. If only some are None, those are
+    replaced with zero tensors (equivalent to dropout).
 
     This function requires torch to stack tensors. If torch is not
     available, returns the batch as a list (for testing without GPU).
@@ -283,16 +284,27 @@ def collate_cached_batch(
     try:
         import torch
 
-        # Stack tensors where all items have non-None values
         for key in ("latent", "text_emb", "text_mask", "reference"):
             values = [item[key] for item in batch]
-            if all(v is not None for v in values):
-                try:
-                    result[key] = torch.stack(values)
-                except Exception:
-                    result[key] = values  # Fall back to list if shapes differ
-            else:
-                result[key] = values  # Keep as list with None entries
+
+            # All None → store as None (not a list of Nones).
+            # This is the normal case for T2V reference, for example.
+            if all(v is None for v in values):
+                result[key] = None
+                continue
+
+            # Mixed None/non-None → replace Nones with zero tensors
+            # matching the first non-None value's shape. This acts like
+            # dropout (zeroed embeddings = unconditional generation).
+            non_none = [v for v in values if v is not None]
+            if len(non_none) < len(values):
+                template = non_none[0]
+                values = [
+                    v if v is not None else torch.zeros_like(template)
+                    for v in values
+                ]
+
+            result[key] = torch.stack(values)
 
     except ImportError:
         # No torch — return raw values (for testing)

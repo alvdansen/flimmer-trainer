@@ -268,7 +268,7 @@ class TestCollateCachedBatch:
         assert result["bucket_key"] == "848x480x81"
 
     def test_preserves_none_values(self) -> None:
-        """None tensors are kept as None in list."""
+        """All-None values are collapsed to None (not a list of Nones)."""
         batch = [
             {
                 "sample_id": "a",
@@ -280,4 +280,4 @@ class TestCollateCachedBatch:
             }
         ]
         result = collate_cached_batch(batch)
-        assert result["latent"] == [None]
+        assert result["latent"] is None
