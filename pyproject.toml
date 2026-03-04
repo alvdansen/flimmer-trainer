@@ -23,7 +23,7 @@ caption = [
     "requests>=2.20",
 ]
 dataset = [
-    "filetype>=1.9",
+    "filetype>=1.0",
     "rich>=13.0",
 ]
 triage = [
