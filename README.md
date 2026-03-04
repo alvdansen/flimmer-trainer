@@ -81,7 +81,7 @@ python -m flimmer.video scan "path/to/clips"                              # chec
 python -m flimmer.video ingest "path/to/video.mp4" -o clips               # split at scene boundaries
 python -m flimmer.video normalize "path/to/clips" -o normalized           # fix fps, resolution, frame counts
 python -m flimmer.video caption clips -p gemini -u character -a "Holly"   # generate captions
-python -m flimmer.video extract clips -o clips/references                 # pull reference images for I2V
+python -m flimmer.video extract clips -o clips/references                 # extract first frames for I2V
 python -m flimmer.video triage "path/to/footage" -s concepts/             # find clips of a specific person
 ```
 
@@ -204,7 +204,7 @@ For single-config training (no phases), use `--config` instead of `--project`. S
 | video | `python -m flimmer.video caption <dir> -p <provider>` | Generate captions with a vision model |
 | video | `python -m flimmer.video audit <dir> -p <provider>` | Compare existing captions against fresh output |
 | video | `python -m flimmer.video score <dir>` | Score caption quality locally (no API) |
-| video | `python -m flimmer.video extract <dir> -o <dir>` | Extract reference images from clips |
+| video | `python -m flimmer.video extract <dir> -o <dir>` | Extract first frames from clips |
 | video | `python -m flimmer.video triage <dir> -s <concepts>` | Find clips matching reference photos |
 | dataset | `python -m flimmer.dataset validate <path>` | Check dataset completeness and quality |
 | dataset | `python -m flimmer.dataset organize <path> -o <dir>` | Organize into trainer-ready layout |

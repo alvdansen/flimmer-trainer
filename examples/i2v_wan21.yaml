@@ -9,10 +9,10 @@
 # boundary_ratio tuning. Good starting point for I2V LoRA training.
 #
 # I2V key differences from T2V:
-#   - in_channels: 36 (16 video + 20 reference image latents)
+#   - in_channels: 36 (16 video + 20 first frame latents)
 #   - First frame is encoded by the VAE and concatenated to video latents
 #   - caption_dropout_rate: 0.15 (higher than T2V to strengthen image conditioning)
-#   - first_frame_dropout_rate: available to reduce reference image reliance
+#   - first_frame_dropout_rate: available to reduce first frame reliance
 #
 # Setup:
 #   bash scripts/setup.sh --variant 2.1_i2v_480p
@@ -38,7 +38,7 @@ model:
 
   # Architecture auto-fills from variant. These are the I2V defaults:
   # is_moe: false                                # No expert routing
-  # in_channels: 36                              # 16 video + 20 reference image
+  # in_channels: 36                              # 16 video + 20 first frame
   # flow_shift: 3.0
 
 # Point to your dataset's data config
@@ -89,7 +89,7 @@ training:
 
   # I2V-specific dropout rates
   caption_dropout_rate: 0.15                     # Higher than T2V to rely more on image
-  # first_frame_dropout_rate: 0.05              # Uncomment to occasionally drop reference image
+  # first_frame_dropout_rate: 0.05              # Uncomment to occasionally drop first frame
                                                  # Forces model to learn from text alone sometimes
 
   timestep_sampling: shift

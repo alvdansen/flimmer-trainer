@@ -13,7 +13,7 @@
 #   2. Expert fork: split into per-expert LoRAs with tuned hyperparameters
 #
 # I2V key differences from T2V:
-#   - in_channels: 36 (16 video + 20 reference image latents)
+#   - in_channels: 36 (16 video + 20 first frame latents)
 #   - boundary_ratio: 0.900 (I2V default, vs 0.500 for T2V)
 #   - First frame is VAE-encoded and concatenated to video latents
 #   - caption_dropout_rate: 0.15 (higher to strengthen image conditioning)
@@ -44,7 +44,7 @@ model:
 
   # Architecture auto-fills from variant. These are the I2V MoE defaults:
   # is_moe: true
-  # in_channels: 36                              # 16 video + 20 reference image
+  # in_channels: 36                              # 16 video + 20 first frame
   # boundary_ratio: 0.900                        # I2V noise boundary (higher than T2V 0.500)
   # flow_shift: 3.0
 
@@ -96,7 +96,7 @@ training:
 
   # I2V-specific dropout rates
   caption_dropout_rate: 0.15                     # Higher than T2V to rely more on image
-  # first_frame_dropout_rate: 0.05              # Uncomment to occasionally drop reference image
+  # first_frame_dropout_rate: 0.05              # Uncomment to occasionally drop first frame
 
   timestep_sampling: shift
   resume_from: null

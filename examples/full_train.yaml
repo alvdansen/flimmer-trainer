@@ -31,7 +31,7 @@ model:
 
   # Architecture auto-fills from variant. Override only if needed:
   # is_moe: true
-  # in_channels: 36                        # T2V: 16, I2V: 36 (+ reference image)
+  # in_channels: 36                        # T2V: 16, I2V: 36 (+ first frame)
   # num_layers: 40
   # boundary_ratio: 0.500                  # T2V: 0.5, I2V: 0.900
   # flow_shift: 5.0                        # Validated: 5.0 for T2V

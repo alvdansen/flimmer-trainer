@@ -51,8 +51,8 @@ controls:
   images:
     reference:
       source: first_frame         # first_frame | folder | none
-      folder: null                # path to reference images (when source: folder)
-      required: false             # true = error if missing reference image
+      folder: null                # path to first frame images (when source: folder)
+      required: false             # true = error if missing first frame
     # subject:                    # (future) character/object identity references
     # style:                      # (future) aesthetic/mood references
 

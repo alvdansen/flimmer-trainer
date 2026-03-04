@@ -30,7 +30,7 @@ for epoch in range(num_epochs):
         1. Encode video through VAE -> latent representation
         2. Sample random noise level (timestep)
         3. Add noise to latents at that level
-        4. Prepare conditioning (text embeddings, reference image if I2V)
+        4. Prepare conditioning (text embeddings, first frame if I2V)
         5. Ask model to predict the noise (or velocity, for flow matching)
         6. Compare prediction to actual noise -> calculate loss
         7. Backpropagate through LoRA weights only (base model frozen)
@@ -130,7 +130,7 @@ The biggest practical gap in video LoRA training isn't the training loop — it'
 1. Raw video (footage, downloads, client assets)
 2. Scene detection and cutting into clean clips
 3. Caption generation
-4. Reference image extraction (for I2V)
+4. First frame extraction (for I2V)
 5. Validation and organization
 6. Latent pre-encoding
 7. THEN training
@@ -142,7 +142,7 @@ The training loop doesn't know about Wan or any specific model. Instead, Flimmer
 
 - **Noise schedule**: How noise is added/removed. Wan uses flow matching. Other models may use different approaches. The interface is the same; the implementation differs.
 - **Layer mapping**: Which transformer layers get LoRA adapters. Every model has different layer names and structure. The LoRA injection code asks the model backend "which layers should I target?"
-- **Forward pass**: How the model processes inputs. T2V models take noisy latents + text embeddings. I2V models also take a reference image. The model backend defines its own forward pass.
+- **Forward pass**: How the model processes inputs. T2V models take noisy latents + text embeddings. I2V models also take a first frame. The model backend defines its own forward pass.
 - **Checkpoint format**: How to save weights so inference tools can load them. ComfyUI expects specific key names; diffusers expects different ones. The model backend knows its own format.
 
 Adding a new model means implementing these four interfaces. The training loop, optimizer, logging, and everything else stays the same.
@@ -168,7 +168,7 @@ flimmer-kit/
 │   │   ├── validate.py            # Structural validation
 │   │   ├── scene.py               # PySceneDetect wrapper
 │   │   ├── split.py               # ffmpeg wrapper (normalize, split)
-│   │   ├── extract.py             # Reference image extraction
+│   │   ├── extract.py             # First frame extraction
 │   │   └── image_quality.py       # Laplacian sharpness scoring
 │   │
 │   ├── caption/                   # VLM captioning pipeline

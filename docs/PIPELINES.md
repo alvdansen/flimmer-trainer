@@ -113,7 +113,7 @@ python -m flimmer.training train -c i2v_train.yaml
 ```
 
 Key differences from T2V:
-- Reference images are VAE-encoded and concatenated to video latents (in_channels: 36 vs 16)
+- First frames are VAE-encoded and concatenated to video latents (in_channels: 36 vs 16)
 - Higher caption dropout (0.15 vs 0.10) to strengthen image conditioning
 - `first_frame_dropout_rate` available to reduce first frame reliance
 
@@ -163,7 +163,7 @@ python -m flimmer.dataset organize clips -o organized -t ai-toolkit # ai-toolkit
 | **triage** | `python -m flimmer.video triage <dir> -s <concepts>` | Find clips matching reference images via CLIP |
 | **caption** | `python -m flimmer.video caption <dir> -p <provider>` | Generate captions via VLM (Gemini, Replicate, Ollama) |
 | **score** | `python -m flimmer.video score <dir>` | Score caption quality locally (no API) |
-| **extract** | `python -m flimmer.video extract <dir> -o <out>` | Extract reference images from clips |
+| **extract** | `python -m flimmer.video extract <dir> -o <out>` | Extract first frames from clips |
 | **audit** | `python -m flimmer.video audit <dir>` | Compare existing captions against fresh VLM output |
 | **validate** | `python -m flimmer.dataset validate <dir>` | Check dataset completeness and quality |
 | **organize** | `python -m flimmer.dataset organize <dir> -o <out>` | Structure dataset for a specific trainer |

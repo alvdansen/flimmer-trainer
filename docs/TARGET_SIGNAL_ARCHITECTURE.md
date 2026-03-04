@@ -1,7 +1,7 @@
 # Target & Signal Architecture
 
 > Last updated: 2026-03-03 (v2 — added image input taxonomy)
-> Status: Design phase — first-frame I2V reference image conditioning is implemented (Phase 2). The full signal registry pattern described below remains a design proposal.
+> Status: Design phase — first-frame I2V conditioning is implemented (Phase 2). The full signal registry pattern described below remains a design proposal.
 
 This document defines Flimmer's core architectural innovation: treating every training data that operates as an 'input' as a registered control signal with a uniform interface.
 
