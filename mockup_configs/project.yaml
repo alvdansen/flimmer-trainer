@@ -1,0 +1,44 @@
+# Project Config — I2V Wan 2.2 MoE Phased Training
+#
+# Three-phase fork-and-specialize workflow:
+#   1. Unified warmup — both experts train together
+#   2. High-noise expert — composition, motion
+#   3. Low-noise expert — detail, texture
+#
+# Usage:
+#   bash scripts/train.sh --project project.yaml --status
+#   bash scripts/train.sh --project project.yaml --all
+
+name: holly_i2v
+model_id: wan-2.2-i2v-14b
+
+base_config: ./flimmer_train.yaml
+
+run_level_params:
+  lora_rank: 32
+  lora_alpha: 16
+  mixed_precision: bf16
+  base_model_precision: bf16
+
+phases:
+
+  # Phase 1: Both experts share one LoRA. Builds a general foundation.
+  - type: full_noise
+    name: "Unified Warmup"
+    overrides:
+      learning_rate: 5e-5
+      max_epochs: 15
+
+  # Phase 2: High-noise expert fork. Coarse structure converges fast.
+  - type: high_noise
+    name: "High Noise Expert"
+    overrides:
+      learning_rate: 3e-5
+      max_epochs: 25
+
+  # Phase 3: Low-noise expert fork. Fine details need more patience.
+  - type: low_noise
+    name: "Low Noise Expert"
+    overrides:
+      learning_rate: 2e-5
+      max_epochs: 40

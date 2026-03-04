@@ -1,0 +1,24 @@
+# Data Config — I2V Phased Training
+#
+# Dataset with first-frame extraction for I2V conditioning.
+# Flat layout: video_clips/ contains .mp4 + .txt pairs.
+# First frames are auto-extracted from each clip during encoding.
+
+dataset:
+  name: holly                        # CHANGE: your subject name
+  use_case: character                # character | style | motion | object
+
+datasets:
+  - path: ./video_clips              # .mp4 + .txt pairs side by side
+    repeats: 1
+
+video:
+  fps: 16
+  resolution: 480                    # 480 for first run, 720 uses ~2x VRAM
+
+controls:
+  text:
+    anchor_word: holly               # CHANGE: your trigger word
+  images:
+    reference:
+      source: first_frame            # auto-extract first frame from each clip

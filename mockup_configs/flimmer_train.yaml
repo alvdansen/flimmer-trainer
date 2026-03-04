@@ -1,0 +1,62 @@
+# Base Training Config — I2V Wan 2.2 Phased
+#
+# project.yaml inherits from this. Each phase overrides only what changes.
+# Model paths assume setup.sh was run with --variant 2.2_i2v.
+
+model:
+  variant: 2.2_i2v
+  dit_high: ./models/wan2.2_i2v_high_noise_14B_fp16.safetensors
+  dit_low: ./models/wan2.2_i2v_low_noise_14B_fp16.safetensors
+  vae: ./models/wan_2.1_vae.safetensors
+  t5: ./models/umt5_xxl_fp16.safetensors
+
+data_config: ./flimmer_data.yaml
+
+lora:
+  rank: 32
+  alpha: 16                          # alpha/rank = 0.5x (conservative)
+  loraplus_lr_ratio: 4.0
+  dropout: 0.05
+
+optimizer:
+  type: adamw8bit
+  learning_rate: 5e-5
+  weight_decay: 0.01
+  betas: [0.9, 0.999]
+  eps: 1e-8
+  max_grad_norm: 1.0
+
+scheduler:
+  type: cosine_with_min_lr
+  warmup_steps: 0
+  min_lr_ratio: 0.01
+
+training:
+  mixed_precision: bf16
+  base_model_precision: bf16
+  gradient_checkpointing: true
+  seed: 42
+  unified_epochs: 15
+  batch_size: 1
+  gradient_accumulation_steps: 1
+  caption_dropout_rate: 0.15         # higher for I2V — lean on first frame conditioning
+  timestep_sampling: shift
+
+moe:
+  enabled: true
+  fork_enabled: true
+
+save:
+  output_dir: ./output
+  name: holly_i2v
+  save_every_n_epochs: 5
+  save_last: true
+  format: safetensors
+
+logging:
+  backends: [console, wandb]
+  wandb_project: holly_i2v_test
+  log_every_n_steps: 10
+
+sampling:
+  enabled: false

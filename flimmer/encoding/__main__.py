@@ -70,7 +70,7 @@ def _auto_extract_first_frames(
 
         # Determine output directory for references
         if structure == StructureType.FLIMMER:
-            ref_dir = dataset_dir / "training" / "signals" / "references"
+            ref_dir = dataset_dir / "training" / "signals" / "first_frame"
         else:
             ref_dir = dataset_dir  # flat: same directory as videos
 

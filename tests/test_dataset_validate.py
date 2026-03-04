@@ -402,7 +402,7 @@ class TestValidateDataset:
                 b"Caption",
             )
             _make_textured_image(
-                tmp_path / "training" / "signals" / "references" / f"{stem}.png",
+                tmp_path / "training" / "signals" / "first_frame" / f"{stem}.png",
             )
         config = _default_config()
         discovered = discover_dataset(tmp_path, config)

@@ -157,7 +157,7 @@ def discover_files(
 
     For flat layout: scans the directory directly.
     For flimmer layout: scans training/targets/ for videos,
-    training/signals/captions/ for captions, training/signals/references/ for images.
+    training/signals/captions/ for captions, training/signals/first_frame/ for images.
 
     Args:
         directory: Path to the dataset source folder.
@@ -181,7 +181,7 @@ def discover_files(
         # Flimmer layout: structured subdirectories
         targets_dir = directory / "training" / "targets"
         captions_dir = directory / "training" / "signals" / "captions"
-        references_dir = directory / "training" / "signals" / "references"
+        references_dir = directory / "training" / "signals" / "first_frame"
 
         if targets_dir.is_dir():
             for f in sorted(targets_dir.iterdir()):

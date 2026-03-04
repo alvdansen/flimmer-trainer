@@ -137,7 +137,7 @@ def _video_directory(output_dir: Path, layout: OrganizeLayout) -> str:
 def _reference_directory(output_dir: Path, layout: OrganizeLayout) -> str:
     """Get the directory containing reference images, in forward-slash format."""
     if layout == OrganizeLayout.FLIMMER:
-        return _to_forward_slash(output_dir / "training" / "signals" / "references")
+        return _to_forward_slash(output_dir / "training" / "signals" / "first_frame")
     return _to_forward_slash(output_dir)
 
 

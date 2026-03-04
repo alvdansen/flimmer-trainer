@@ -197,7 +197,7 @@ my_project/
     signals/
       captions/            # .txt caption files
         clip_001.txt
-      references/          # auto-extracted first frames (I2V)
+      first_frame/         # auto-extracted first frames (I2V)
         clip_001.png
   cache/                   # created by encoding
   output/                  # created by training

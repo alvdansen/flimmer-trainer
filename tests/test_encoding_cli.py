@@ -90,7 +90,7 @@ class TestAutoExtractFirstFrames:
 
     @patch("flimmer.video.extract.extract_first_frame")
     def test_extracts_for_flimmer_layout(self, mock_extract, tmp_path: Path) -> None:
-        """First frames are extracted to training/signals/references/ for flimmer layout."""
+        """First frames are extracted to training/signals/first_frame/ for flimmer layout."""
         ds = tmp_path / "ds"
         _touch(ds / "training" / "targets" / "clip_001.mp4")
         _touch(ds / "training" / "targets" / "clip_002.mp4")
@@ -104,7 +104,7 @@ class TestAutoExtractFirstFrames:
         # Check output paths point to references dir
         for call in mock_extract.call_args_list:
             out_path = call[0][1]  # second positional arg
-            assert "references" in str(out_path)
+            assert "first_frame" in str(out_path)
             assert str(out_path).endswith(".png")
 
     @patch("flimmer.video.extract.extract_first_frame")
@@ -125,7 +125,7 @@ class TestAutoExtractFirstFrames:
         ds = tmp_path / "ds"
         _touch(ds / "training" / "targets" / "clip_001.mp4")
         # Reference already exists
-        _touch(ds / "training" / "signals" / "references" / "clip_001.png")
+        _touch(ds / "training" / "signals" / "first_frame" / "clip_001.png")
 
         count = _auto_extract_first_frames("unused", [ds])
 

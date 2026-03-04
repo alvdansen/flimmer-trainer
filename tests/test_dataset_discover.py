@@ -57,7 +57,7 @@ def _make_flimmer_dataset(tmp_path: Path, stems: list[str]) -> Path:
     for stem in stems:
         _touch(tmp_path / "training" / "targets" / f"{stem}.mp4")
         _touch(tmp_path / "training" / "signals" / "captions" / f"{stem}.txt", b"Caption")
-        _touch(tmp_path / "training" / "signals" / "references" / f"{stem}.png")
+        _touch(tmp_path / "training" / "signals" / "first_frame" / f"{stem}.png")
     return tmp_path
 
 

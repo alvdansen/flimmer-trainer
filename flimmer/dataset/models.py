@@ -31,7 +31,7 @@ class OrganizeLayout(str, Enum):
     - flat: all files in one folder, stem-matched. Universal trainer compat
       (musubi-tuner, ai-toolkit, kohya, ostris).
     - flimmer: hierarchical structure separating targets from control signals.
-      training/targets/ + training/signals/captions/ + training/signals/references/
+      training/targets/ + training/signals/captions/ + training/signals/first_frame/
     """
     FLAT = "flat"
     FLIMMER = "flimmer"

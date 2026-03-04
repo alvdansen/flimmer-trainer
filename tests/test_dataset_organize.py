@@ -298,8 +298,8 @@ class TestFlimmerOrganize:
         assert (out / "training" / "targets" / "b.mp4").exists()
         assert (out / "training" / "signals" / "captions" / "a.txt").exists()
         assert (out / "training" / "signals" / "captions" / "b.txt").exists()
-        assert (out / "training" / "signals" / "references" / "a.png").exists()
-        assert (out / "training" / "signals" / "references" / "b.png").exists()
+        assert (out / "training" / "signals" / "first_frame" / "a.png").exists()
+        assert (out / "training" / "signals" / "first_frame" / "b.png").exists()
 
     def test_flimmer_without_refs(self, tmp_path: Path):
         """Flimmer layout works without reference images."""
@@ -310,7 +310,7 @@ class TestFlimmerOrganize:
         assert (out / "training" / "targets" / "a.mp4").exists()
         assert (out / "training" / "signals" / "captions" / "a.txt").exists()
         # No references dir created if no refs
-        assert not (out / "training" / "signals" / "references" / "a.png").exists()
+        assert not (out / "training" / "signals" / "first_frame" / "a.png").exists()
 
 
 # ---------------------------------------------------------------------------

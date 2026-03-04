@@ -45,7 +45,7 @@ my_project/
     signals/
       captions/            # .txt captions
         clip_001.txt
-      references/          # first frames (auto-extracted for I2V)
+      first_frame/         # first frames (auto-extracted for I2V)
         clip_001.png
 ```
 

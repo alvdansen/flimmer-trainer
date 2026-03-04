@@ -141,14 +141,14 @@ def _build_flimmer_paths(
 
     targets -> training/targets/
     captions -> training/signals/captions/
-    references -> training/signals/references/
+    references -> training/signals/first_frame/
 
     Returns:
         (target_dest, caption_dest, reference_dest)
     """
     targets_dir = output_dir / "training" / "targets"
     captions_dir = output_dir / "training" / "signals" / "captions"
-    references_dir = output_dir / "training" / "signals" / "references"
+    references_dir = output_dir / "training" / "signals" / "first_frame"
 
     target_dest = _resolve_collision(
         targets_dir / f"{sample.stem}{sample.target.suffix}",
