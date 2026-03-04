@@ -235,24 +235,6 @@ def resolve_phases(config: object) -> list[TrainingPhase]:
         if experts_config[name].enabled
     ]
 
-    # Check if any expert has max_epochs set. If none do, this is a base
-    # config for project-level phased training — show unified phase only.
-    any_expert_has_epochs = any(
-        experts_config[name].max_epochs is not None  # type: ignore[attr-defined]
-        for name in enabled_experts
-    )
-
-    if not any_expert_has_epochs and training.unified_epochs > 0:
-        # Base config for phased training — expert epochs come from project.yaml
-        phases.append(_build_unified_phase(
-            epochs=training.unified_epochs,
-            training=training,
-            optimizer=optimizer,
-            scheduler=scheduler,
-            lora=lora,
-        ))
-        return phases
-
     # Add unified phase if unified_epochs > 0
     if training.unified_epochs > 0:
         phases.append(_build_unified_phase(
@@ -263,9 +245,12 @@ def resolve_phases(config: object) -> list[TrainingPhase]:
             lora=lora,
         ))
 
-    # Add expert phases in configured order
+    # Add expert phases in configured order.
+    # Skip experts with no max_epochs — they're configured via project.yaml.
     for expert_name in enabled_experts:
         expert_overrides = experts_config[expert_name]
+        if expert_overrides.max_epochs is None:  # type: ignore[attr-defined]
+            continue
         phase = _build_expert_phase(
             expert_name=expert_name,
             overrides=expert_overrides,

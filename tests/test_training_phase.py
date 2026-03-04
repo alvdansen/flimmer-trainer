@@ -432,12 +432,14 @@ class TestOverrideResolution:
 class TestPhaseErrors:
     """Invalid configs produce clear errors."""
 
-    def test_expert_missing_max_epochs(self):
+    def test_expert_missing_max_epochs_skipped(self):
+        """Experts with no max_epochs are skipped (configured via project.yaml)."""
         config = MockConfig(moe=MockMoe(
             high_noise=MockExpertOverrides(max_epochs=None),
         ))
-        with pytest.raises(PhaseConfigError, match="max_epochs"):
-            resolve_phases(config)
+        phases = resolve_phases(config)
+        phase_types = [p.phase_type for p in phases]
+        assert PhaseType.HIGH_NOISE not in phase_types
 
     def test_unified_only_zero_epochs(self):
         config = MockConfig(
