@@ -41,6 +41,10 @@ phases:
 ## Running
 
 ```bash
+# Preview the fully resolved plan (verify overrides are applied)
+python -m flimmer.training plan --project my_project.yaml
+# or: bash scripts/train.sh --project my_project.yaml --dry-run
+
 # Run all pending phases
 bash scripts/train.sh --project my_project.yaml --all
 
@@ -49,10 +53,9 @@ bash scripts/train.sh --project my_project.yaml
 
 # Check progress
 bash scripts/train.sh --project my_project.yaml --status
-
-# Preview without training
-bash scripts/train.sh --project my_project.yaml --dry-run
 ```
+
+**Always preview your plan first.** The plan command merges your project overrides with the base config and shows the actual epochs, learning rates, and settings for each phase. If values look wrong, your overrides aren't being applied.
 
 ## Adapting
 

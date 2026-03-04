@@ -140,17 +140,86 @@ def cmd_status(args: argparse.Namespace) -> None:
 
 
 def cmd_plan(args: argparse.Namespace) -> None:
-    """Dry-run: show what phases would run and their overrides.
+    """Dry-run: show the fully resolved training plan with project overrides.
 
-    Loads the project and shows which phases are PENDING,
-    what overrides would be applied, and the execution order.
+    For each pending phase, merges the base config with phase overrides
+    and resolves training parameters. Shows the same detailed plan output
+    as `python -m flimmer.training plan` but with project overrides applied.
+
+    Falls back to showing raw overrides if the base config is not available.
     """
     from flimmer.phases import PhaseStatus
 
-    from flimmer.project.loader import project_from_yaml
+    from flimmer.project.loader import (
+        load_project_yaml,
+        project_from_yaml,
+    )
 
     yaml_path = Path(args.project)
     project = project_from_yaml(yaml_path)
+    project_dir = yaml_path.parent
+
+    # Try to resolve the full plan via the training config pipeline
+    project_data = load_project_yaml(yaml_path)
+    base_config = project_data.get("base_config")
+    base_config_path = None
+    if base_config:
+        candidate = (project_dir / base_config).resolve()
+        if candidate.exists():
+            base_config_path = candidate
+
+    if base_config_path is not None:
+        _plan_resolved(project, project_data, base_config_path)
+    else:
+        _plan_simple(project)
+
+
+def _plan_resolved(
+    project: object, project_data: dict, base_config_path: Path
+) -> None:
+    """Show the fully resolved training plan by merging base config with overrides."""
+    import tempfile
+
+    from flimmer.phases import PhaseStatus
+    from flimmer.project.loader import merge_phase_config
+
+    # Show completed/running phases briefly
+    for i, entry in enumerate(project.phases):
+        if entry.status != PhaseStatus.PENDING:
+            status = entry.status.value.upper()
+            name = entry.config.display_name or entry.config.phase_type
+            print(f"  Phase {i}: {name} [{status}] -- skip")
+
+    # Resolve each pending phase through the training config pipeline
+    all_resolved_phases = []
+    with tempfile.TemporaryDirectory() as tmpdir:
+        for i, entry in enumerate(project.phases):
+            if entry.status != PhaseStatus.PENDING:
+                continue
+
+            merged_path = Path(tmpdir) / f"phase_{i}.yaml"
+            merge_phase_config(base_config_path, project, i, merged_path)
+
+            try:
+                from flimmer.config.training_loader import load_training_config
+                from flimmer.training.phase import resolve_phases
+
+                config = load_training_config(str(merged_path))
+                phases = resolve_phases(config)
+                all_resolved_phases.extend(phases)
+            except Exception as e:
+                name = entry.config.display_name or entry.config.phase_type
+                print(f"\n  Phase {i}: {name} -- ERROR resolving: {e}")
+
+    if all_resolved_phases:
+        from flimmer.training.logger import TrainingLogger
+        logger = TrainingLogger(backends=["console"])
+        logger.print_training_plan(all_resolved_phases)
+
+
+def _plan_simple(project: object) -> None:
+    """Fallback plan display when base config is not available."""
+    from flimmer.phases import PhaseStatus
 
     print(f"\nProject: {project.name}")
     print(f"Model:   {project.model_id}")

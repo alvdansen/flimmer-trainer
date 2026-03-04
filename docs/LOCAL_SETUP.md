@@ -146,6 +146,9 @@ See `config_templates/projects/` for project configs — `i2v_moe_phases.yaml` f
 **Basic commands:**
 
 ```bash
+# Preview the fully resolved plan (verify your overrides are applied)
+bash scripts/train.sh --project config_templates/projects/i2v_moe_phases.yaml --dry-run
+
 # Run the next pending phase
 bash scripts/train.sh --project config_templates/projects/i2v_moe_phases.yaml
 
@@ -154,12 +157,17 @@ bash scripts/train.sh --project config_templates/projects/i2v_moe_phases.yaml --
 
 # Check which phases are completed/pending
 bash scripts/train.sh --project config_templates/projects/i2v_moe_phases.yaml --status
-
-# Preview what would happen
-bash scripts/train.sh --project config_templates/projects/i2v_moe_phases.yaml --dry-run
 ```
 
-Re-running a project skips completed phases and picks up where it left off. Phase status is tracked in a `flimmer_project.json` file alongside the project YAML.
+You can also preview the plan directly via Python:
+
+```bash
+python -m flimmer.training plan --project project.yaml
+```
+
+**Important:** Always preview your plan before training. The `--dry-run` flag shows the fully resolved parameters (actual epochs, learning rates, etc.) after merging your project overrides with the base config. If the values look wrong, your overrides aren't being applied — check that `base_config` in your project YAML points to the right file.
+
+Re-running a project skips completed phases and picks up where it left off. Phase status is tracked in a `flimmer_project.json` file alongside the project YAML. If you edit `project.yaml` after a run, Flimmer detects the change and re-reads from the YAML automatically.
 
 For a conceptual overview of the phase system, see the [Phase System](../README.md#phase-system) section in the README.
 

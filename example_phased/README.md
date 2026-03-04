@@ -43,12 +43,20 @@ my_project/
 3. Edit `flimmer_data.yaml` — set your project name and anchor word
 4. Edit `flimmer_train.yaml` — set your model variant, weight paths, and output dir
 5. Edit `project.yaml` — define your phases (see examples inside)
-6. Encode and train:
+6. Preview, encode, and train:
 
 ```bash
+# Preview the plan — verify your project overrides are applied
+python -m flimmer.training plan --project project.yaml
+
+# Encode latents
 bash scripts/prepare.sh --config flimmer_train.yaml
+
+# Train all phases
 bash scripts/train.sh --project project.yaml --all
 ```
+
+**Tip:** Always run the plan command before training. It shows the fully resolved parameters (actual epochs, LR, etc.) for each phase after merging your project overrides with the base config. If something looks wrong, fix it before burning GPU time.
 
 ## When to use phases
 

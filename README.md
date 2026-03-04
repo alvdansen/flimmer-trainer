@@ -107,8 +107,9 @@ python -m flimmer.encoding cache-text -c train.yaml        # encode captions thr
 Run training from a single YAML config. Supports checkpoint resume, W&B logging, and video sampling during training so you can see how your LoRA is progressing.
 
 ```bash
-python -m flimmer.training plan -c train.yaml    # preview training plan (no GPU)
-python -m flimmer.training train -c train.yaml   # train
+python -m flimmer.training plan -c train.yaml              # preview plan for single config
+python -m flimmer.training plan --project project.yaml      # preview plan with project overrides applied
+python -m flimmer.training train -c train.yaml              # train
 ```
 
 ## Training Modes
@@ -158,9 +159,12 @@ phases:
 Phases are tracked automatically. Re-running a project skips completed phases and picks up where it left off.
 
 ```bash
-bash scripts/train.sh --project project.yaml --status    # check phase progress
-bash scripts/train.sh --project project.yaml --all       # run all pending phases
+bash scripts/train.sh --project project.yaml --dry-run   # preview resolved plan (epochs, LR, etc.)
+bash scripts/train.sh --project project.yaml --status     # check phase progress
+bash scripts/train.sh --project project.yaml --all        # run all pending phases
 ```
+
+**Important:** Always preview your plan before training to verify your project overrides are applied correctly. The `--dry-run` flag (or `python -m flimmer.training plan --project project.yaml`) shows the fully resolved parameters for each phase — the actual epochs, learning rates, and settings that training will use, not just the base config defaults.
 
 For single-config training (no phases), use `--config` instead of `--project`. See `config_templates/` for both approaches.
 
@@ -209,7 +213,8 @@ Starter projects you can copy and edit:
 | encoding | `python -m flimmer.encoding info -c <config>` | Show what would be cached |
 | encoding | `python -m flimmer.encoding cache-latents -c <config>` | Encode videos/images through VAE |
 | encoding | `python -m flimmer.encoding cache-text -c <config>` | Encode captions through T5 |
-| training | `python -m flimmer.training plan -c <config>` | Preview training plan (dry run) |
+| training | `python -m flimmer.training plan -c <config>` | Preview training plan (single config) |
+| training | `python -m flimmer.training plan --project <project>` | Preview plan with project overrides applied |
 | training | `python -m flimmer.training train -c <config>` | Run training |
 
 ## Installation

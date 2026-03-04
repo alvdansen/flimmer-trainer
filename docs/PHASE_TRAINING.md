@@ -159,6 +159,9 @@ Things you **cannot** change between phases (they're locked in `run_level_params
 ## Running a Project
 
 ```bash
+# Preview the resolved training plan (shows actual epochs, LR, etc.)
+python -m flimmer.training plan --project project.yaml
+
 # Run the next pending phase
 python -m flimmer.project run --project project.yaml
 
@@ -167,17 +170,27 @@ python -m flimmer.project run --project project.yaml --all
 
 # Check which phases are done
 python -m flimmer.project status --project project.yaml
-
-# Preview without actually training
-python -m flimmer.project run --project project.yaml --dry-run
 ```
 
 Or via the shell scripts:
 ```bash
-bash scripts/train.sh --project project.yaml
-bash scripts/train.sh --project project.yaml --all
-bash scripts/train.sh --project project.yaml --status
+bash scripts/train.sh --project project.yaml --dry-run    # preview resolved plan
+bash scripts/train.sh --project project.yaml               # run next phase
+bash scripts/train.sh --project project.yaml --all         # run all phases
+bash scripts/train.sh --project project.yaml --status      # check progress
 ```
+
+### Always preview your plan first
+
+Before committing GPU time, check that your project overrides are actually applied:
+
+```bash
+python -m flimmer.training plan --project project.yaml
+```
+
+This merges each phase's overrides with the base config and shows the fully resolved parameters — the actual epochs, learning rates, and settings that training will use. If you see unexpected values (like 15 epochs when you set 1), your overrides aren't being picked up.
+
+**Common gotcha:** `python -m flimmer.training plan -c flimmer_train.yaml` shows the base config plan **without any project overrides**. Always use `--project` when working with project files.
 
 ### What happens when you run it
 
@@ -189,6 +202,16 @@ bash scripts/train.sh --project project.yaml --status
 6. Next time you run it, it skips to the next phase
 
 If training crashes mid-phase, re-running picks up from the last checkpoint within that phase.
+
+### Editing project.yaml after a run
+
+Phase status is cached in `flimmer_project.json` alongside your project YAML. If you edit `project.yaml` (e.g., change epoch counts), Flimmer detects the newer timestamp and re-reads from the YAML automatically.
+
+If you want to force a clean restart (re-run all phases from scratch), delete `flimmer_project.json`:
+
+```bash
+rm flimmer_project.json
+```
 
 ## MoE Phases (Wan 2.2)
 

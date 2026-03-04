@@ -48,7 +48,18 @@ def cmd_train(args: argparse.Namespace) -> None:
 
 
 def cmd_plan(args: argparse.Namespace) -> None:
-    """Print the resolved training plan without training."""
+    """Print the resolved training plan without training.
+
+    Accepts either --config (single training config) or --project
+    (project YAML with phase overrides). When given --project, delegates
+    to the project plan command which merges overrides before resolving.
+    """
+    if getattr(args, "project", None):
+        # Delegate to project plan — it merges overrides and resolves
+        from flimmer.project.__main__ import cmd_plan as project_cmd_plan
+        project_cmd_plan(args)
+        return
+
     from flimmer.config.training_loader import load_training_config
     from flimmer.training.loop import TrainingOrchestrator
 
@@ -257,10 +268,14 @@ def build_parser() -> argparse.ArgumentParser:
         "plan",
         help="Print resolved training plan (dry run).",
     )
-    plan_parser.add_argument(
+    plan_group = plan_parser.add_mutually_exclusive_group(required=True)
+    plan_group.add_argument(
         "--config", "-c",
-        required=True,
         help="Path to the Flimmer training config YAML.",
+    )
+    plan_group.add_argument(
+        "--project", "-p",
+        help="Path to a project YAML (shows plan with phase overrides applied).",
     )
 
     return parser

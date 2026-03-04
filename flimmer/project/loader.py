@@ -42,8 +42,9 @@ def project_from_yaml(yaml_path: Path) -> Project:
     """Convert a project YAML to a Project instance.
 
     If a flimmer_project.json exists alongside the YAML, loads it
-    instead (preserves phase status for resume behavior). Otherwise
-    creates a new Project from the YAML data.
+    instead (preserves phase status for resume behavior). If the YAML
+    has been modified since the JSON was written, warns the user and
+    re-creates from the YAML.
 
     Args:
         yaml_path: Path to the project YAML file.
@@ -57,7 +58,21 @@ def project_from_yaml(yaml_path: Path) -> Project:
     # Check for existing project state (resume behavior)
     json_path = project_dir / "flimmer_project.json"
     if json_path.exists():
-        return Project.load(project_dir)
+        # Detect stale JSON: if YAML was edited after JSON was written,
+        # the user's changes would be silently ignored. Re-create instead.
+        yaml_mtime = yaml_path.stat().st_mtime
+        json_mtime = json_path.stat().st_mtime
+        if yaml_mtime > json_mtime:
+            import sys
+            print(
+                f"Note: {yaml_path.name} is newer than flimmer_project.json. "
+                f"Re-reading project from YAML.",
+                file=sys.stderr,
+            )
+            # Remove stale JSON so we recreate from YAML below
+            json_path.unlink()
+        else:
+            return Project.load(project_dir)
 
     # Create new project from YAML
     project = Project.create(
