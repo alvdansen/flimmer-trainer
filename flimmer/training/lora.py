@@ -152,7 +152,9 @@ class LoRAState:
             )
 
         try:
-            save_fn(save_dict, str(path), metadata=meta)
+            tmp_path = Path(str(path) + ".tmp")
+            save_fn(save_dict, str(tmp_path), metadata=meta)
+            tmp_path.replace(path)
         except LoRAError:
             raise
         except Exception as e:

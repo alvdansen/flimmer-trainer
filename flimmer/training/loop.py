@@ -366,6 +366,7 @@ class TrainingOrchestrator:
                 noise_schedule=noise_schedule,
                 optimizer=optimizer,
                 scheduler=scheduler,
+                epoch=epoch,
             )
 
             # Check if max_train_steps triggered a clean stop
@@ -689,6 +690,7 @@ class TrainingOrchestrator:
         noise_schedule: Any,
         optimizer: Any = None,
         scheduler: Any = None,
+        epoch: int = 0,
     ) -> float:
         """Run one training epoch.
 
@@ -704,6 +706,7 @@ class TrainingOrchestrator:
             noise_schedule: NoiseSchedule from model backend.
             optimizer: Phase optimizer (None for dry run).
             scheduler: Phase LR scheduler (None for dry run).
+            epoch: Current epoch number (used for emergency checkpoint naming).
 
         Returns:
             Average loss for the epoch.
@@ -765,14 +768,19 @@ class TrainingOrchestrator:
             batch = self._apply_first_frame_dropout(batch, phase.first_frame_dropout_rate)
 
             # Forward + loss + backward
-            loss = self._training_step(
-                phase=phase,
-                batch=batch,
-                noise_schedule=noise_schedule,
-                compute_dtype=compute_dtype,
-                device=device,
-                grad_accum_steps=grad_accum,
-            )
+            try:
+                loss = self._training_step(
+                    phase=phase,
+                    batch=batch,
+                    noise_schedule=noise_schedule,
+                    compute_dtype=compute_dtype,
+                    device=device,
+                    grad_accum_steps=grad_accum,
+                )
+            except torch.cuda.OutOfMemoryError:
+                print("\n  CUDA OOM during training step — saving emergency checkpoint...")
+                self._save_checkpoint(phase, epoch=epoch, lora=active_lora)
+                raise
 
             total_loss += loss
             num_steps += 1
@@ -1232,7 +1240,9 @@ class TrainingOrchestrator:
             bundle["rng_torch_cuda"] = torch.cuda.get_rng_state()
 
         path = self._checkpoint_mgr.output_dir / "training_checkpoint.pt"
-        torch.save(bundle, str(path))
+        tmp_path = path.with_suffix(".pt.tmp")
+        torch.save(bundle, str(tmp_path))
+        tmp_path.replace(path)
         return path
 
     def _restore_full_state(

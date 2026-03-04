@@ -25,6 +25,7 @@ caption = [
 dataset = [
     "filetype>=1.0",
     "rich>=13.0",
+    "opencv-python>=4.5",
 ]
 triage = [
     "torch>=2.0",
@@ -34,11 +35,14 @@ triage = [
 encoding = [
     "safetensors>=0.4",
     "torch>=2.0",
+    "Pillow>=9.0",
+    "numpy>=1.24",
 ]
 training = [
     "torch>=2.0",
     "safetensors>=0.4",
     "numpy>=1.24",
+    "Pillow>=9.0",
 ]
 wan = [
     "torch>=2.0",
