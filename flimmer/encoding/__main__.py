@@ -49,6 +49,47 @@ def _get_dataset_dirs(data_config_path: str | Path) -> list[Path]:
         return [data_config_path]
 
 
+def _auto_extract_first_frames(
+    data_config_path: str | Path,
+    dataset_dirs: list[Path],
+) -> int:
+    """Auto-extract first frames as reference images for I2V training.
+
+    Only called when data config has source: first_frame. Writes PNGs
+    to the references location so discovery finds them.
+
+    Returns number of frames extracted.
+    """
+    from flimmer.dataset.discover import detect_structure, discover_files, StructureType
+    from flimmer.video.extract import extract_first_frame
+
+    extracted = 0
+    for dataset_dir in dataset_dirs:
+        structure = detect_structure(dataset_dir)
+        files = discover_files(dataset_dir, structure)
+
+        # Determine output directory for references
+        if structure == StructureType.FLIMMER:
+            ref_dir = dataset_dir / "training" / "signals" / "references"
+        else:
+            ref_dir = dataset_dir  # flat: same directory as videos
+
+        for video_path in files["targets"]:
+            # Only extract for videos, not images
+            if video_path.suffix.lower() not in {".mp4", ".mov", ".avi", ".mkv", ".webm"}:
+                continue
+
+            ref_path = ref_dir / f"{video_path.stem}.png"
+            if ref_path.exists():
+                continue
+
+            ref_path.parent.mkdir(parents=True, exist_ok=True)
+            extract_first_frame(video_path, ref_path)
+            extracted += 1
+
+    return extracted
+
+
 def _discover_from_config(data_config_path: str | Path, probe: bool = True):
     """Discover samples from all dataset directories in a data config."""
     from flimmer.encoding.discover import discover_samples
@@ -165,6 +206,16 @@ def cmd_cache_latents(args: argparse.Namespace) -> None:
     print(f"Dtype: {config.cache.dtype}")
     print(f"Frame counts: {config.cache.target_frames}")
     print()
+
+    # Auto-extract first-frame references for I2V if configured
+    from flimmer.config.loader import load_data_config
+    data_config = load_data_config(config.data_config)
+    if data_config.controls.images.reference.source == "first_frame":
+        dataset_dirs = _get_dataset_dirs(config.data_config)
+        count = _auto_extract_first_frames(config.data_config, dataset_dirs)
+        if count:
+            print(f"Auto-extracted {count} first-frame references for I2V")
+            print()
 
     # Discover from actual dataset paths in data config
     samples, _ = _discover_from_config(config.data_config)
