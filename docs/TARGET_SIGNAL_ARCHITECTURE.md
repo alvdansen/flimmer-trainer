@@ -1,6 +1,6 @@
 # Target & Signal Architecture
 
-> Last updated: 2026-02-22 (v2 — added image input taxonomy)
+> Last updated: 2026-03-03 (v2 — added image input taxonomy)
 > Status: Design phase — not yet implemented
 
 This document defines Flimmer's core architectural innovation: treating every training data that operates as an 'input' as a registered control signal with a uniform interface.
