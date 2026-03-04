@@ -37,10 +37,10 @@
 
 ### Documentation
 
-- [ ] **DOC-01**: Update README with phase system overview
+- [x] **DOC-01**: Update README with phase system overview
 - [x] **DOC-02**: Update docs/ with I2V model support
-- [ ] **DOC-03**: Local run scripts documented with usage examples
-- [ ] **DOC-04**: Beta caveat prominently displayed for local run scripts
+- [x] **DOC-03**: Local run scripts documented with usage examples
+- [x] **DOC-04**: Beta caveat prominently displayed for local run scripts
 
 ## v2 Requirements
 
@@ -85,10 +85,10 @@
 | RUN-02 | Phase 3 | Complete |
 | RUN-03 | Phase 3 | Complete |
 | RUN-04 | Phase 3 | Complete |
-| DOC-01 | Phase 4 | Pending |
+| DOC-01 | Phase 4 | Complete |
 | DOC-02 | Phase 4 | Complete |
-| DOC-03 | Phase 4 | Pending |
-| DOC-04 | Phase 4 | Pending |
+| DOC-03 | Phase 4 | Complete |
+| DOC-04 | Phase 4 | Complete |
 
 **Coverage:**
 - v1 requirements: 22 total
