@@ -38,7 +38,7 @@
 ### Documentation
 
 - [ ] **DOC-01**: Update README with phase system overview
-- [ ] **DOC-02**: Update docs/ with I2V model support
+- [x] **DOC-02**: Update docs/ with I2V model support
 - [ ] **DOC-03**: Local run scripts documented with usage examples
 - [ ] **DOC-04**: Beta caveat prominently displayed for local run scripts
 
@@ -86,7 +86,7 @@
 | RUN-03 | Phase 3 | Complete |
 | RUN-04 | Phase 3 | Complete |
 | DOC-01 | Phase 4 | Pending |
-| DOC-02 | Phase 4 | Pending |
+| DOC-02 | Phase 4 | Complete |
 | DOC-03 | Phase 4 | Pending |
 | DOC-04 | Phase 4 | Pending |
 
