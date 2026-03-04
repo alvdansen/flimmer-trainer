@@ -268,10 +268,14 @@ class CheckpointManager:
         state_path = self._output_dir / TRAINING_STATE_FILENAME
         self._output_dir.mkdir(parents=True, exist_ok=True)
 
+        tmp_path = state_path.with_suffix(".json.tmp")
         try:
-            with open(state_path, "w", encoding="utf-8") as f:
+            with open(tmp_path, "w", encoding="utf-8") as f:
                 json.dump(state.to_dict(), f, indent=2)
+            tmp_path.replace(state_path)
         except Exception as e:
+            # Clean up temp file on failure
+            tmp_path.unlink(missing_ok=True)
             raise CheckpointError(
                 f"Failed to save training state to '{state_path}': {e}"
             ) from e

@@ -1,7 +1,5 @@
 # Local Setup Guide
 
-> **Beta** — The local setup scripts are functional and producing results, but they are lightly tested compared to the RunPod workflow. If you run into issues, please report them.
-
 This guide covers the three-script workflow for setting up and running Flimmer on a local GPU machine.
 
 ---

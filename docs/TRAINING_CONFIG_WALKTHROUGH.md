@@ -3,7 +3,7 @@
 **Date:** 2026-03-03
 **Status:** Verified against `wan22_training_master.py` and `full_train.yaml`
 
-> **Beta — all Wan 2.2 MoE hyperparameters are experimental.** The defaults below represent our current best understanding, but they're actively being validated. Override anything in YAML to match your own experiments.
+> Wan 2.2 MoE hyperparameters are experimental — defaults reflect our current best understanding but are actively being validated. Override anything in YAML to match your own experiments.
 
 This document walks through the files that make up the Flimmer training config system and how they connect. It's a reference for understanding what exists, what decisions were made, and why.
 
@@ -368,7 +368,7 @@ This means a user who sets `optimizer.learning_rate: 1e-4` overrides the default
 
 ## Current Defaults (Wan 2.2 T2V)
 
-> These are experimental beta defaults. They reflect our current best understanding from ongoing training experiments, but they haven't been fully validated. Override anything that doesn't work for your use case.
+> These defaults reflect our current best understanding from ongoing training experiments. MoE hyperparameters are actively being validated. Override anything that doesn't work for your use case.
 
 | Setting | Default | Notes |
 |---------|---------|-------|

@@ -59,7 +59,7 @@ class TestRegistry:
 
 class TestHelpers:
     def test_forward_slash_windows(self):
-        assert _to_forward_slash(Path("C:\\Users\\minta\\data")) == "C:/Users/minta/data"
+        assert _to_forward_slash(Path("C:\\Users\\user\\data")) == "C:/Users/user/data"
 
     def test_forward_slash_unix(self):
         assert _to_forward_slash(Path("/home/user/data")) == "/home/user/data"

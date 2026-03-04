@@ -2,8 +2,6 @@
 
 Video LoRA training toolkit for diffusion transformer models. Starting with Wan 2.1 and Wan 2.2 (T2V and I2V), with more model integrations planned.
 
-> **Beta release** — Flimmer is functional and producing results, but this is an early release. Training defaults, config schemas, and CLI interfaces may change. MoE hyperparameters are actively being validated. Local scripts are included but lightly tested. The phase system has also been lightly tested, please flag any issues.
-
 Built by [Alvdansen Labs](https://github.com/alvdansen).
 
 ## What is Flimmer?
@@ -266,6 +264,10 @@ docs/              Architecture, pipelines, config reference, guides
 - [Local Setup Guide](docs/LOCAL_SETUP.md) — Setting up and running on a local GPU machine
 - [I2V Training Guide](docs/I2V_GUIDE.md) — Image-to-Video training with Wan models
 - [W&B Setup Guide](docs/WANDB_GUIDE.md) — Tracking training runs with Weights & Biases
+
+## Security Note
+
+Training checkpoint resume uses `weights_only=False` when loading PyTorch optimizer state (required for the optimizer state format). Only resume from checkpoints you produced yourself.
 
 ## License
 

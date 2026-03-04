@@ -1,7 +1,6 @@
 # Technical Architecture — How Video LoRA Training Works
 
-> Last updated: 2026-03-03
-> Status: Beta — all major modules built, Wan 2.2 MoE hyperparameters are experimental
+> Last updated: 2026-03-04
 
 This document explains the mechanics of video LoRA training from first principles, common limitations in the current finetuning ecosystem, and how Flimmer's architecture approaches things differently.
 
@@ -116,7 +115,7 @@ moe:
 
 **Override everything.** Every MoE hyperparameter can be overridden in YAML — fork on/off, boundary ratio, per-expert learning rate, epochs, dropout, batch size, caption dropout, weight decay, optimizer type, scheduler type. See [Training Config Walkthrough](TRAINING_CONFIG_WALKTHROUGH.md) for the full list.
 
-> **All Wan 2.2 MoE hyperparameters are experimental.** This is a beta release — defaults will evolve as we validate results.
+> **Wan 2.2 MoE hyperparameters are experimental.** Defaults will evolve as we validate results.
 
 ### Video-Native Dataset Pipeline
 Before anything touches the training loop:
