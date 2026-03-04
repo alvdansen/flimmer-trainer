@@ -1,8 +1,8 @@
 """Variant registry — maps config strings to backend constructor args.
 
-Each Wan variant (2.2_t2v, 2.2_i2v, 2.1_t2v) has different architecture
-parameters. The registry centralizes this mapping so the backend constructor
-doesn't need to hardcode variant-specific logic.
+Each Wan variant (2.2_t2v, 2.2_i2v, 2.1_t2v, 2.1_i2v) has different
+architecture parameters. The registry centralizes this mapping so the
+backend constructor doesn't need to hardcode variant-specific logic.
 
 This module is GPU-free — it just defines the mapping. Actual model loading
 happens in backend.py.
@@ -39,6 +39,11 @@ WAN_VARIANTS: dict[str, dict[str, Any]] = {
         "lora_targets": list(T2V_LORA_TARGETS),
         "expert_subfolders": dict(WAN_EXPERT_SUBFOLDERS),
         "pipeline_class": "WanPipeline",
+        "subtypes": {
+            "480p": {"hf_repo": "Wan-AI/Wan2.2-T2V-A14B-Diffusers"},
+            "720p": {"hf_repo": "Wan-AI/Wan2.2-T2V-A14B-Diffusers"},
+        },
+        "default_subtype": "480p",
     },
     "2.2_i2v": {
         "model_id": "wan-2.2-i2v-14b",
@@ -51,6 +56,11 @@ WAN_VARIANTS: dict[str, dict[str, Any]] = {
         "lora_targets": list(T2V_LORA_TARGETS) + list(I2V_EXTRA_TARGETS),
         "expert_subfolders": dict(WAN_EXPERT_SUBFOLDERS),
         "pipeline_class": "WanImageToVideoPipeline",
+        "subtypes": {
+            "480p": {"hf_repo": "Wan-AI/Wan2.2-I2V-A14B-Diffusers"},
+            "720p": {"hf_repo": "Wan-AI/Wan2.2-I2V-A14B-Diffusers"},
+        },
+        "default_subtype": "480p",
     },
     "2.1_t2v": {
         "model_id": "wan-2.1-t2v-14b",
@@ -65,6 +75,30 @@ WAN_VARIANTS: dict[str, dict[str, Any]] = {
             "default": WAN_SINGLE_SUBFOLDER,
         },
         "pipeline_class": "WanPipeline",
+        "subtypes": {
+            "480p": {"hf_repo": "Wan-AI/Wan2.1-T2V-14B-Diffusers"},
+            "720p": {"hf_repo": "Wan-AI/Wan2.1-T2V-14B-Diffusers"},
+        },
+        "default_subtype": "480p",
+    },
+    "2.1_i2v": {
+        "model_id": "wan-2.1-i2v-14b",
+        "is_moe": False,
+        "is_i2v": True,
+        "in_channels": WAN_I2V_IN_CHANNELS,
+        "num_blocks": WAN_NUM_BLOCKS,
+        "boundary_ratio": None,  # No expert routing for non-MoE
+        "flow_shift": 3.0,
+        "lora_targets": list(T2V_LORA_TARGETS) + list(I2V_EXTRA_TARGETS),
+        "expert_subfolders": {
+            "default": WAN_SINGLE_SUBFOLDER,
+        },
+        "pipeline_class": "WanImageToVideoPipeline",
+        "subtypes": {
+            "480p": {"hf_repo": "Wan-AI/Wan2.1-I2V-14B-480P-Diffusers"},
+            "720p": {"hf_repo": "Wan-AI/Wan2.1-I2V-14B-720P-Diffusers"},
+        },
+        "default_subtype": "480p",
     },
 }
 """Registry of Wan model variants and their architecture parameters.
@@ -80,6 +114,8 @@ Each entry contains everything needed to construct a WanModelBackend:
     - lora_targets: default module names for LoRA adapter placement
     - expert_subfolders: maps expert names to diffusers subfolder paths
     - pipeline_class: diffusers pipeline class name for inference
+    - subtypes: resolution subtypes mapping to HF repo IDs
+    - default_subtype: default resolution subtype (e.g. '480p')
 """
 
 
@@ -87,7 +123,7 @@ def get_variant_info(variant: str) -> dict[str, Any]:
     """Look up variant configuration by name.
 
     Args:
-        variant: Variant string (e.g. '2.2_t2v', '2.2_i2v', '2.1_t2v').
+        variant: Variant string (e.g. '2.2_t2v', '2.2_i2v', '2.1_t2v', '2.1_i2v').
 
     Returns:
         Dict of variant parameters (copy, safe to modify).
@@ -130,7 +166,7 @@ def get_wan_backend(config: Any) -> Any:
     if variant is None:
         raise ValueError(
             "config.model.variant is required. "
-            "Set variant to '2.2_t2v', '2.2_i2v', or '2.1_t2v'."
+            "Set variant to '2.2_t2v', '2.2_i2v', '2.1_t2v', or '2.1_i2v'."
         )
 
     info = get_variant_info(variant)
