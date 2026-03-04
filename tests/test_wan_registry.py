@@ -49,6 +49,10 @@ def _make_mock_config(
     model_cfg.path = path
     model_cfg.boundary_ratio = boundary_ratio
     model_cfg.flow_shift = flow_shift
+    model_cfg.resolution = None  # Explicit None so MagicMock doesn't return a mock
+    model_cfg.dit = None
+    model_cfg.dit_high = None
+    model_cfg.dit_low = None
 
     lora_cfg = MagicMock()
     lora_cfg.target_modules = lora_target_modules
@@ -64,15 +68,16 @@ def _make_mock_config(
 # ---------------------------------------------------------------------------
 
 class TestWanVariantsStructure:
-    """Registry must contain exactly the three expected variant keys."""
+    """Registry must contain exactly the four expected variant keys."""
 
-    def test_variants_has_three_entries(self):
-        assert len(WAN_VARIANTS) == 3
+    def test_variants_has_four_entries(self):
+        assert len(WAN_VARIANTS) == 4
 
     def test_expected_keys_present(self):
         assert "2.2_t2v" in WAN_VARIANTS
         assert "2.2_i2v" in WAN_VARIANTS
         assert "2.1_t2v" in WAN_VARIANTS
+        assert "2.1_i2v" in WAN_VARIANTS
 
     def test_all_variants_have_required_keys(self):
         """Every variant must expose all required architecture keys."""
@@ -87,6 +92,8 @@ class TestWanVariantsStructure:
             "lora_targets",
             "expert_subfolders",
             "pipeline_class",
+            "subtypes",
+            "default_subtype",
         }
         for name, variant in WAN_VARIANTS.items():
             missing = required - set(variant.keys())
@@ -216,6 +223,68 @@ class TestWan21Variant:
         assert WAN_VARIANTS["2.1_t2v"]["pipeline_class"] == "WanPipeline"
 
 
+class TestWan21I2vVariant:
+    """Wan 2.1 I2V -- non-MoE, reference image conditioning."""
+
+    def test_is_not_moe(self):
+        assert WAN_VARIANTS["2.1_i2v"]["is_moe"] is False
+
+    def test_is_i2v(self):
+        assert WAN_VARIANTS["2.1_i2v"]["is_i2v"] is True
+
+    def test_in_channels(self):
+        assert WAN_VARIANTS["2.1_i2v"]["in_channels"] == 36
+
+    def test_num_blocks(self):
+        assert WAN_VARIANTS["2.1_i2v"]["num_blocks"] == 40
+
+    def test_boundary_ratio_is_none(self):
+        assert WAN_VARIANTS["2.1_i2v"]["boundary_ratio"] is None
+
+    def test_pipeline_class(self):
+        assert WAN_VARIANTS["2.1_i2v"]["pipeline_class"] == "WanImageToVideoPipeline"
+
+    def test_model_id(self):
+        assert "2.1" in WAN_VARIANTS["2.1_i2v"]["model_id"]
+        assert "i2v" in WAN_VARIANTS["2.1_i2v"]["model_id"]
+
+    def test_lora_target_count(self):
+        # 10 base T2V targets + 2 I2V extra = 12
+        assert len(WAN_VARIANTS["2.1_i2v"]["lora_targets"]) == 12
+
+    def test_i2v_extra_targets_present(self):
+        targets = WAN_VARIANTS["2.1_i2v"]["lora_targets"]
+        assert "attn2.add_k_proj" in targets
+        assert "attn2.add_v_proj" in targets
+
+    def test_has_default_subfolder(self):
+        subs = WAN_VARIANTS["2.1_i2v"]["expert_subfolders"]
+        assert "default" in subs
+        assert "high_noise" not in subs
+
+
+class TestSubtypes:
+    """All variants must have resolution subtypes."""
+
+    def test_all_variants_have_subtypes(self):
+        for name, variant in WAN_VARIANTS.items():
+            assert "subtypes" in variant, f"'{name}' missing subtypes"
+            assert "default_subtype" in variant, f"'{name}' missing default_subtype"
+
+    def test_subtypes_have_hf_repo(self):
+        for name, variant in WAN_VARIANTS.items():
+            for res, sub in variant["subtypes"].items():
+                assert "hf_repo" in sub, f"'{name}' subtype '{res}' missing hf_repo"
+
+    def test_21_i2v_has_separate_resolution_repos(self):
+        subs = WAN_VARIANTS["2.1_i2v"]["subtypes"]
+        assert subs["480p"]["hf_repo"] != subs["720p"]["hf_repo"]
+
+    def test_22_i2v_has_same_resolution_repos(self):
+        subs = WAN_VARIANTS["2.2_i2v"]["subtypes"]
+        assert subs["480p"]["hf_repo"] == subs["720p"]["hf_repo"]
+
+
 # ---------------------------------------------------------------------------
 # Expert subfolders
 # ---------------------------------------------------------------------------
@@ -281,7 +350,7 @@ class TestGetVariantInfo:
         assert WAN_VARIANTS["2.2_t2v"]["model_id"] == original_model_id
 
     def test_all_valid_variants_succeed(self):
-        for name in ("2.2_t2v", "2.2_i2v", "2.1_t2v"):
+        for name in ("2.2_t2v", "2.2_i2v", "2.1_t2v", "2.1_i2v"):
             info = get_variant_info(name)
             assert info is not None
 
@@ -491,6 +560,31 @@ class TestGetWanBackend:
         _, kwargs = mock_backend_cls.call_args
         assert kwargs["is_moe"] is False
         assert kwargs["boundary_ratio"] is None
+
+    def test_21_i2v_passes_correct_params(self):
+        """Wan 2.1 I2V must forward is_moe=False, is_i2v=True, in_channels=36."""
+        from flimmer.training.wan.registry import get_wan_backend
+
+        mock_backend_cls = MagicMock(name="WanModelBackend")
+        mock_backend_cls.return_value = MagicMock()
+
+        config = _make_mock_config(variant="2.1_i2v")
+
+        with patch.dict(
+            sys.modules,
+            {"flimmer.training.wan.backend": _make_mock_backend_module(mock_backend_cls)},
+        ):
+            get_wan_backend(config)
+
+        _, kwargs = mock_backend_cls.call_args
+        assert kwargs["is_moe"] is False
+        assert kwargs["is_i2v"] is True
+        assert kwargs["in_channels"] == 36
+        assert kwargs["boundary_ratio"] is None
+        # Config repo should be set from subtypes
+        assert kwargs["config_repo"] is not None
+        assert "2.1" in kwargs["config_repo"]
+        assert "I2V" in kwargs["config_repo"]
 
     def test_model_path_forwarded_to_backend(self):
         """config.model.path must be passed as model_path to the backend."""

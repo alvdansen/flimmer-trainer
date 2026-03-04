@@ -89,6 +89,25 @@ def _make_21_t2v_backend(**overrides) -> WanModelBackend:
     return WanModelBackend(**kwargs)
 
 
+def _make_21_i2v_backend(**overrides) -> WanModelBackend:
+    """Return a Wan 2.1 I2V (single-transformer, non-MoE, I2V) backend."""
+    kwargs = dict(
+        model_id="wan-2.1-i2v-14b",
+        model_path="/fake/path",
+        is_moe=False,
+        is_i2v=True,
+        in_channels=36,
+        num_blocks=40,
+        boundary_ratio=None,
+        flow_shift=3.0,
+        lora_targets=["attn1.to_q", "attn1.to_k", "attn2.add_k_proj", "attn2.add_v_proj"],
+        expert_subfolders={"default": "transformer"},
+        config_repo="Wan-AI/Wan2.1-I2V-14B-480P-Diffusers",
+    )
+    kwargs.update(overrides)
+    return WanModelBackend(**kwargs)
+
+
 # ---------------------------------------------------------------------------
 # Properties
 # ---------------------------------------------------------------------------
@@ -480,6 +499,104 @@ class TestPrepareModelInputs:
 
         # No concatenation — channel count stays at C
         assert inputs["hidden_states"].shape[1] == C
+
+    def test_21_i2v_concatenates_reference(self):
+        """Wan 2.1 I2V also channel-concatenates the reference with noisy latents."""
+        torch = pytest.importorskip("torch")
+        backend = _make_21_i2v_backend()
+        B, C, F, H, W = 1, 16, 5, 8, 8
+        ref_C = 20
+        noisy = torch.zeros(B, C, F, H, W)
+        reference = torch.ones(B, ref_C, F, H, W)
+        batch = {"latent": noisy, "text_emb": None, "text_mask": None, "reference": reference}
+        inputs = backend.prepare_model_inputs(batch, torch.tensor([0.5]), noisy)
+        assert inputs["hidden_states"].shape[1] == C + ref_C
+
+
+# ---------------------------------------------------------------------------
+# Wan 2.1 I2V Properties
+# ---------------------------------------------------------------------------
+
+class TestWan21I2vProperties:
+    """Wan 2.1 I2V -- non-MoE but with reference image support."""
+
+    def test_is_not_moe(self):
+        backend = _make_21_i2v_backend()
+        assert backend.supports_moe is False
+
+    def test_is_i2v(self):
+        backend = _make_21_i2v_backend()
+        assert backend.supports_reference_image is True
+
+    def test_boundary_ratio_is_none(self):
+        backend = _make_21_i2v_backend()
+        assert backend.boundary_ratio is None
+
+    def test_config_repo_stored(self):
+        backend = _make_21_i2v_backend()
+        assert backend._resolve_config_repo() == "Wan-AI/Wan2.1-I2V-14B-480P-Diffusers"
+
+    def test_model_id(self):
+        backend = _make_21_i2v_backend()
+        assert backend.model_id == "wan-2.1-i2v-14b"
+
+    def test_flow_shift(self):
+        backend = _make_21_i2v_backend()
+        assert backend.flow_shift == pytest.approx(3.0)
+
+    def test_protocol_compliance(self):
+        backend = _make_21_i2v_backend()
+        assert isinstance(backend, ModelBackend)
+
+
+# ---------------------------------------------------------------------------
+# First-frame dropout
+# ---------------------------------------------------------------------------
+
+class TestFirstFrameDropout:
+    """First-frame dropout zeros reference tensor independently."""
+
+    def test_no_dropout_at_zero_rate(self):
+        """rate=0.0 should leave all references intact."""
+        torch = pytest.importorskip("torch")
+        import random as rng
+        from flimmer.training.loop import TrainingOrchestrator
+
+        # Create a minimal mock orchestrator to test the method
+        orchestrator = MagicMock(spec=TrainingOrchestrator)
+        orchestrator._apply_first_frame_dropout = TrainingOrchestrator._apply_first_frame_dropout.__get__(orchestrator)
+
+        reference = torch.ones(4, 20, 5, 8, 8)
+        batch = {"latent": torch.zeros(4, 16, 5, 8, 8), "reference": reference}
+        result = orchestrator._apply_first_frame_dropout(batch, 0.0)
+        # All references should still be ones (no dropout)
+        assert torch.all(result["reference"] == 1.0)
+
+    def test_full_dropout_at_rate_one(self):
+        """rate=1.0 should zero ALL references."""
+        torch = pytest.importorskip("torch")
+        from flimmer.training.loop import TrainingOrchestrator
+
+        orchestrator = MagicMock(spec=TrainingOrchestrator)
+        orchestrator._apply_first_frame_dropout = TrainingOrchestrator._apply_first_frame_dropout.__get__(orchestrator)
+
+        reference = torch.ones(4, 20, 5, 8, 8)
+        batch = {"latent": torch.zeros(4, 16, 5, 8, 8), "reference": reference}
+        result = orchestrator._apply_first_frame_dropout(batch, 1.0)
+        # All references should be zeroed
+        assert torch.all(result["reference"] == 0.0)
+
+    def test_no_crash_when_reference_is_none(self):
+        """batch with reference=None should pass through unchanged."""
+        torch = pytest.importorskip("torch")
+        from flimmer.training.loop import TrainingOrchestrator
+
+        orchestrator = MagicMock(spec=TrainingOrchestrator)
+        orchestrator._apply_first_frame_dropout = TrainingOrchestrator._apply_first_frame_dropout.__get__(orchestrator)
+
+        batch = {"latent": torch.zeros(2, 16, 5, 8, 8), "reference": None}
+        result = orchestrator._apply_first_frame_dropout(batch, 0.5)
+        assert result["reference"] is None
 
 
 # ---------------------------------------------------------------------------
