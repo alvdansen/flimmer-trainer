@@ -61,7 +61,7 @@ run_level_params:
   lora_rank: 16
   lora_alpha: 16
   mixed_precision: bf16
-  base_model_precision: bf16
+  base_model_precision: fp8
 
 
 # ── Phases (execute in order) ──────────────────────────────────────
