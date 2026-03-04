@@ -78,11 +78,11 @@ Plans:
   2. docs/ covers Wan 2.2 I2V model support including reference image requirements and example configs
   3. Local run scripts have documented usage examples showing setup and training launch commands
   4. Beta caveat is prominently displayed (not buried) in both README and script docs for local run scripts
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 04-01: TBD
-- [ ] 04-02: TBD
+- [ ] 04-01-PLAN.md — Update README with phase system, dual Quick Start, beta caveat, project structure, local scripts link; create LOCAL_SETUP.md
+- [ ] 04-02-PLAN.md — Create I2V_GUIDE.md; update PIPELINES.md, TRAINING_CONFIG_WALKTHROUGH.md, TARGET_SIGNAL_ARCHITECTURE.md with I2V content
 
 ## Progress
 
@@ -95,4 +95,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 | 1. Phase System Integration | 3/3 | Complete    | 2026-03-04 |
 | 2. I2V Backend (Wan 2.1 + 2.2) | 0/3 | Planned | - |
 | 3. Local Run Scripts | 0/3 | Planned | - |
-| 4. Documentation | 0/0 | Not started | - |
+| 4. Documentation | 0/2 | Planned | - |
