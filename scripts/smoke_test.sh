@@ -434,19 +434,26 @@ fi
 
 step "Checking cached files"
 
-latent_count=$(find "$CLIPS_DIR" -name "*.latent.pt" 2>/dev/null | wc -l)
-text_count=$(find "$CLIPS_DIR" -name "*.text.pt" 2>/dev/null | wc -l)
+CACHE_DIR="$TEST_DIR/cache"
+latent_count=$(find "$CACHE_DIR/latents" -name "*.safetensors" 2>/dev/null | wc -l)
+text_count=$(find "$CACHE_DIR/text" -name "*.safetensors" 2>/dev/null | wc -l)
 
 if [[ "$latent_count" -gt 0 ]]; then
-    pass "Found $latent_count cached latent file(s)"
+    pass "Found $latent_count cached latent file(s) in cache/latents/"
 else
-    fail "No cached latent files found (expected *.latent.pt alongside clips)"
+    fail "No cached latent files found in $CACHE_DIR/latents/"
 fi
 
 if [[ "$text_count" -gt 0 ]]; then
-    pass "Found $text_count cached text embedding file(s)"
+    pass "Found $text_count cached text embedding file(s) in cache/text/"
 else
-    fail "No cached text embedding files found (expected *.text.pt alongside clips)"
+    fail "No cached text embedding files found in $CACHE_DIR/text/"
+fi
+
+if [[ -f "$CACHE_DIR/cache_manifest.json" ]]; then
+    pass "Cache manifest exists"
+else
+    fail "Cache manifest not found at $CACHE_DIR/cache_manifest.json"
 fi
 
 # ── Train (1 epoch) ──────────────────────────────────────────────────
