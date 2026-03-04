@@ -65,6 +65,10 @@ def cmd_run(args: argparse.Namespace) -> None:
     output_dir = Path(args.output_dir) if args.output_dir else Path("./output") / project.name
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    # Write merged configs next to the base config so that relative
+    # paths (data_config, model weights) resolve correctly.
+    config_dir = base_config_path.parent
+
     ran_any = False
     for i, entry in enumerate(project.phases):
         if entry.status == PhaseStatus.COMPLETED:
@@ -73,8 +77,8 @@ def cmd_run(args: argparse.Namespace) -> None:
         if entry.status == PhaseStatus.RUNNING:
             print(f"  Phase {i}: {entry.config.display_name} -- RUNNING (resuming)")
         if entry.status in (PhaseStatus.PENDING, PhaseStatus.RUNNING):
-            # Generate merged config for this phase
-            merged_config_path = output_dir / f".flimmer_phase_{i}_config.yaml"
+            # Generate merged config next to base config for path resolution
+            merged_config_path = config_dir / f".flimmer_phase_{i}_config.yaml"
             merge_phase_config(base_config_path, project, i, merged_config_path)
 
             # Mark phase running and save
