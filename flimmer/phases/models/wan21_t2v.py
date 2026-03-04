@@ -1,8 +1,8 @@
 """Wan 2.1 T2V 14B (non-MoE) model definition.
 
 Single-transformer model with no expert routing. Only supports the
-unified phase type. Multi-stage training is achieved by using multiple
-PhaseConfig entries all with phase_type="unified" but different
+full_noise phase type. Multi-stage training is achieved by using multiple
+PhaseConfig entries all with phase_type="full_noise" but different
 overrides and datasets.
 
 No boundary_ratio param since there is no MoE expert routing.
@@ -36,7 +36,7 @@ WAN_21_T2V = ModelDefinition(
     ],
     phase_types=[
         PhaseTypeDeclaration(
-            name="unified",
+            name="full_noise",
             description="Standard single-phase training",
         ),
     ],

@@ -36,12 +36,12 @@ class TestPhaseEntry:
     """PhaseEntry holds a config and a status."""
 
     def test_default_status_is_pending(self):
-        config = PhaseConfig(phase_type="unified")
+        config = PhaseConfig(phase_type="full_noise")
         entry = PhaseEntry(config=config)
         assert entry.status == PhaseStatus.PENDING
 
     def test_status_can_be_set(self):
-        config = PhaseConfig(phase_type="unified")
+        config = PhaseConfig(phase_type="full_noise")
         entry = PhaseEntry(config=config, status=PhaseStatus.RUNNING)
         assert entry.status == PhaseStatus.RUNNING
 
@@ -89,24 +89,24 @@ class TestProjectAddPhase:
 
     def test_add_phase_appends(self, register_all_models):
         project = Project.create("test", "wan-2.1-t2v-14b")
-        idx = project.add_phase(PhaseConfig(phase_type="unified"))
+        idx = project.add_phase(PhaseConfig(phase_type="full_noise"))
         assert idx == 0
         assert len(project.phases) == 1
         assert project.phases[0].status == PhaseStatus.PENDING
-        assert project.phases[0].config.phase_type == "unified"
+        assert project.phases[0].config.phase_type == "full_noise"
 
     def test_add_phase_returns_index(self, register_all_models):
         project = Project.create("test", "wan-2.1-t2v-14b")
-        project.add_phase(PhaseConfig(phase_type="unified"))
-        idx = project.add_phase(PhaseConfig(phase_type="unified", display_name="Phase 2"))
+        project.add_phase(PhaseConfig(phase_type="full_noise"))
+        idx = project.add_phase(PhaseConfig(phase_type="full_noise", display_name="Phase 2"))
         assert idx == 1
 
     def test_add_phase_insert_at_index(self, register_all_models):
         project = Project.create("test", "wan-2.1-t2v-14b")
-        project.add_phase(PhaseConfig(phase_type="unified", display_name="First"))
-        project.add_phase(PhaseConfig(phase_type="unified", display_name="Third"))
+        project.add_phase(PhaseConfig(phase_type="full_noise", display_name="First"))
+        project.add_phase(PhaseConfig(phase_type="full_noise", display_name="Third"))
         idx = project.add_phase(
-            PhaseConfig(phase_type="unified", display_name="Second"),
+            PhaseConfig(phase_type="full_noise", display_name="Second"),
             index=1,
         )
         assert idx == 1
@@ -120,25 +120,25 @@ class TestProjectModifyPhase:
 
     def test_modify_pending_phase(self, register_all_models):
         project = Project.create("test", "wan-2.1-t2v-14b")
-        project.add_phase(PhaseConfig(phase_type="unified"))
-        new_config = PhaseConfig(phase_type="unified", display_name="Modified")
+        project.add_phase(PhaseConfig(phase_type="full_noise"))
+        new_config = PhaseConfig(phase_type="full_noise", display_name="Modified")
         project.modify_phase(0, new_config)
         assert project.phases[0].config.display_name == "Modified"
 
     def test_modify_running_raises(self, register_all_models):
         project = Project.create("test", "wan-2.1-t2v-14b")
-        project.add_phase(PhaseConfig(phase_type="unified"))
+        project.add_phase(PhaseConfig(phase_type="full_noise"))
         project.mark_phase_running(0)
         with pytest.raises(PhaseConfigError):
-            project.modify_phase(0, PhaseConfig(phase_type="unified"))
+            project.modify_phase(0, PhaseConfig(phase_type="full_noise"))
 
     def test_modify_completed_raises(self, register_all_models):
         project = Project.create("test", "wan-2.1-t2v-14b")
-        project.add_phase(PhaseConfig(phase_type="unified"))
+        project.add_phase(PhaseConfig(phase_type="full_noise"))
         project.mark_phase_running(0)
         project.mark_phase_completed(0)
         with pytest.raises(PhaseConfigError):
-            project.modify_phase(0, PhaseConfig(phase_type="unified"))
+            project.modify_phase(0, PhaseConfig(phase_type="full_noise"))
 
 
 class TestProjectRemovePhase:
@@ -146,21 +146,21 @@ class TestProjectRemovePhase:
 
     def test_remove_pending_phase(self, register_all_models):
         project = Project.create("test", "wan-2.1-t2v-14b")
-        project.add_phase(PhaseConfig(phase_type="unified", display_name="ToRemove"))
+        project.add_phase(PhaseConfig(phase_type="full_noise", display_name="ToRemove"))
         removed = project.remove_phase(0)
         assert removed.display_name == "ToRemove"
         assert len(project.phases) == 0
 
     def test_remove_running_raises(self, register_all_models):
         project = Project.create("test", "wan-2.1-t2v-14b")
-        project.add_phase(PhaseConfig(phase_type="unified"))
+        project.add_phase(PhaseConfig(phase_type="full_noise"))
         project.mark_phase_running(0)
         with pytest.raises(PhaseConfigError):
             project.remove_phase(0)
 
     def test_remove_completed_raises(self, register_all_models):
         project = Project.create("test", "wan-2.1-t2v-14b")
-        project.add_phase(PhaseConfig(phase_type="unified"))
+        project.add_phase(PhaseConfig(phase_type="full_noise"))
         project.mark_phase_running(0)
         project.mark_phase_completed(0)
         with pytest.raises(PhaseConfigError):
@@ -172,9 +172,9 @@ class TestProjectReorderPhases:
 
     def test_reorder_pending_phases(self, register_all_models):
         project = Project.create("test", "wan-2.1-t2v-14b")
-        project.add_phase(PhaseConfig(phase_type="unified", display_name="A"))
-        project.add_phase(PhaseConfig(phase_type="unified", display_name="B"))
-        project.add_phase(PhaseConfig(phase_type="unified", display_name="C"))
+        project.add_phase(PhaseConfig(phase_type="full_noise", display_name="A"))
+        project.add_phase(PhaseConfig(phase_type="full_noise", display_name="B"))
+        project.add_phase(PhaseConfig(phase_type="full_noise", display_name="C"))
         project.reorder_phases([2, 0, 1])
         assert project.phases[0].config.display_name == "C"
         assert project.phases[1].config.display_name == "A"
@@ -182,8 +182,8 @@ class TestProjectReorderPhases:
 
     def test_reorder_raises_if_non_pending(self, register_all_models):
         project = Project.create("test", "wan-2.1-t2v-14b")
-        project.add_phase(PhaseConfig(phase_type="unified", display_name="A"))
-        project.add_phase(PhaseConfig(phase_type="unified", display_name="B"))
+        project.add_phase(PhaseConfig(phase_type="full_noise", display_name="A"))
+        project.add_phase(PhaseConfig(phase_type="full_noise", display_name="B"))
         project.mark_phase_running(0)
         with pytest.raises(PhaseConfigError):
             project.reorder_phases([1, 0])
@@ -194,20 +194,20 @@ class TestProjectStatusTransitions:
 
     def test_mark_running(self, register_all_models):
         project = Project.create("test", "wan-2.1-t2v-14b")
-        project.add_phase(PhaseConfig(phase_type="unified"))
+        project.add_phase(PhaseConfig(phase_type="full_noise"))
         project.mark_phase_running(0)
         assert project.phases[0].status == PhaseStatus.RUNNING
 
     def test_mark_completed(self, register_all_models):
         project = Project.create("test", "wan-2.1-t2v-14b")
-        project.add_phase(PhaseConfig(phase_type="unified"))
+        project.add_phase(PhaseConfig(phase_type="full_noise"))
         project.mark_phase_running(0)
         project.mark_phase_completed(0)
         assert project.phases[0].status == PhaseStatus.COMPLETED
 
     def test_mark_running_not_pending_raises(self, register_all_models):
         project = Project.create("test", "wan-2.1-t2v-14b")
-        project.add_phase(PhaseConfig(phase_type="unified"))
+        project.add_phase(PhaseConfig(phase_type="full_noise"))
         project.mark_phase_running(0)
         project.mark_phase_completed(0)
         with pytest.raises(PhaseConfigError):
@@ -215,7 +215,7 @@ class TestProjectStatusTransitions:
 
     def test_mark_completed_not_running_raises(self, register_all_models):
         project = Project.create("test", "wan-2.1-t2v-14b")
-        project.add_phase(PhaseConfig(phase_type="unified"))
+        project.add_phase(PhaseConfig(phase_type="full_noise"))
         with pytest.raises(PhaseConfigError):
             project.mark_phase_completed(0)
 
@@ -225,7 +225,7 @@ class TestProjectSaveLoad:
 
     def test_save_creates_file(self, register_all_models, tmp_path):
         project = Project.create("test", "wan-2.1-t2v-14b")
-        project.add_phase(PhaseConfig(phase_type="unified"))
+        project.add_phase(PhaseConfig(phase_type="full_noise"))
         project.save(tmp_path)
         assert (tmp_path / "flimmer_project.json").exists()
 
@@ -235,8 +235,8 @@ class TestProjectSaveLoad:
             "wan-2.1-t2v-14b",
             run_level_params={"lora_rank": 64},
         )
-        project.add_phase(PhaseConfig(phase_type="unified", display_name="P1"))
-        project.add_phase(PhaseConfig(phase_type="unified", display_name="P2"))
+        project.add_phase(PhaseConfig(phase_type="full_noise", display_name="P1"))
+        project.add_phase(PhaseConfig(phase_type="full_noise", display_name="P2"))
         project.mark_phase_running(0)
         project.mark_phase_completed(0)
 
@@ -267,7 +267,7 @@ class TestProjectValidate:
 
     def test_validate_returns_validation_result(self, register_all_models):
         project = Project.create("test", "wan-2.1-t2v-14b")
-        project.add_phase(PhaseConfig(phase_type="unified"))
+        project.add_phase(PhaseConfig(phase_type="full_noise"))
         result = project.validate()
         assert isinstance(result, ValidationResult)
         assert result.valid is True

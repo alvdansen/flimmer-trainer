@@ -10,13 +10,13 @@ class TestPhaseConfigDataset:
 
     def test_default_dataset_is_none(self) -> None:
         """PhaseConfig with no dataset argument defaults to None."""
-        config = PhaseConfig(phase_type="unified")
+        config = PhaseConfig(phase_type="full_noise")
         assert config.dataset is None
 
     def test_dataset_stores_path_string(self) -> None:
         """PhaseConfig with dataset="./data/config.yaml" stores the string."""
         config = PhaseConfig(
-            phase_type="unified",
+            phase_type="full_noise",
             dataset="./data/config.yaml",
         )
         assert config.dataset == "./data/config.yaml"
@@ -24,14 +24,14 @@ class TestPhaseConfigDataset:
     def test_dataset_with_absolute_path(self) -> None:
         """PhaseConfig accepts absolute path strings."""
         config = PhaseConfig(
-            phase_type="unified",
+            phase_type="full_noise",
             dataset="/home/user/data/phase1.yaml",
         )
         assert config.dataset == "/home/user/data/phase1.yaml"
 
     def test_dataset_none_explicit(self) -> None:
         """PhaseConfig with dataset=None is the same as default."""
-        config = PhaseConfig(phase_type="unified", dataset=None)
+        config = PhaseConfig(phase_type="full_noise", dataset=None)
         assert config.dataset is None
 
 
@@ -41,7 +41,7 @@ class TestResolvedPhaseDataset:
     def test_resolved_phase_dataset_none(self) -> None:
         """ResolvedPhase with dataset=None (inherits from run-level)."""
         resolved = ResolvedPhase(
-            phase_type="unified",
+            phase_type="full_noise",
             display_name="",
             enabled=True,
             params={"learning_rate": 5e-5},
@@ -54,7 +54,7 @@ class TestResolvedPhaseDataset:
     def test_resolved_phase_dataset_explicit(self) -> None:
         """ResolvedPhase with explicit dataset path."""
         resolved = ResolvedPhase(
-            phase_type="unified",
+            phase_type="full_noise",
             display_name="",
             enabled=True,
             params={"learning_rate": 5e-5},
@@ -67,7 +67,7 @@ class TestResolvedPhaseDataset:
     def test_resolved_phase_dataset_accessible_on_frozen(self) -> None:
         """Dataset field is accessible on frozen dataclass instance."""
         resolved = ResolvedPhase(
-            phase_type="unified",
+            phase_type="full_noise",
             display_name="",
             enabled=True,
             params={},

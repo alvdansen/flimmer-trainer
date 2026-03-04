@@ -11,25 +11,25 @@ class TestPhaseConfigSignals:
 
     def test_default_signals_is_none(self) -> None:
         """PhaseConfig with no signals argument defaults to None."""
-        config = PhaseConfig(phase_type="unified")
+        config = PhaseConfig(phase_type="full_noise")
         assert config.signals is None
 
     def test_signals_stores_dict(self) -> None:
         """PhaseConfig with signals dict stores the selective overrides."""
         config = PhaseConfig(
-            phase_type="unified",
+            phase_type="full_noise",
             signals={"text": True, "reference_image": False},
         )
         assert config.signals == {"text": True, "reference_image": False}
 
     def test_signals_none_explicit(self) -> None:
         """PhaseConfig with signals=None is the same as default (inherit all)."""
-        config = PhaseConfig(phase_type="unified", signals=None)
+        config = PhaseConfig(phase_type="full_noise", signals=None)
         assert config.signals is None
 
     def test_signals_empty_dict(self) -> None:
         """PhaseConfig with signals={} means no overrides (all inherited)."""
-        config = PhaseConfig(phase_type="unified", signals={})
+        config = PhaseConfig(phase_type="full_noise", signals={})
         assert config.signals == {}
 
 
@@ -41,7 +41,7 @@ class TestPhaseConfigSignalValidation:
     ) -> None:
         """Signal referencing modality not in model's supported_signals raises."""
         config = PhaseConfig(
-            phase_type="unified",
+            phase_type="full_noise",
             signals={"audio": True},  # "audio" not in sample model
         )
         with pytest.raises(PhaseConfigError, match="audio"):
@@ -52,7 +52,7 @@ class TestPhaseConfigSignalValidation:
     ) -> None:
         """Signals referencing supported modalities passes validation."""
         config = PhaseConfig(
-            phase_type="unified",
+            phase_type="full_noise",
             signals={"text": True, "reference_image": False},
         )
         # Should not raise
@@ -63,7 +63,7 @@ class TestPhaseConfigSignalValidation:
     ) -> None:
         """signals=None means inherit all -- passes validation."""
         config = PhaseConfig(
-            phase_type="unified",
+            phase_type="full_noise",
             signals=None,
         )
         config.validate_against(sample_model_definition)
@@ -88,7 +88,7 @@ class TestPhaseConfigSignalValidation:
     ) -> None:
         """Multiple unsupported modalities still caught."""
         config = PhaseConfig(
-            phase_type="unified",
+            phase_type="full_noise",
             signals={"audio": True, "lidar": False},
         )
         with pytest.raises(PhaseConfigError):
@@ -99,7 +99,7 @@ class TestPhaseConfigSignalValidation:
     ) -> None:
         """Specifying every supported modality passes."""
         config = PhaseConfig(
-            phase_type="unified",
+            phase_type="full_noise",
             signals={
                 "text": True,
                 "video": True,
@@ -116,7 +116,7 @@ class TestResolvedPhaseSignals:
     def test_resolved_phase_has_signals(self) -> None:
         """ResolvedPhase carries a fully-specified signals dict."""
         resolved = ResolvedPhase(
-            phase_type="unified",
+            phase_type="full_noise",
             display_name="",
             enabled=True,
             params={},
@@ -133,7 +133,7 @@ class TestResolvedPhaseSignals:
     def test_resolved_phase_signals_accessible_on_frozen(self) -> None:
         """Signals field is accessible on frozen dataclass instance."""
         resolved = ResolvedPhase(
-            phase_type="unified",
+            phase_type="full_noise",
             display_name="",
             enabled=True,
             params={},

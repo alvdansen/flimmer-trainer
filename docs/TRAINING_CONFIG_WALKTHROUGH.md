@@ -11,7 +11,7 @@ This document walks through the files that make up the Flimmer training config s
 
 ## The YAML: What You Should Edit
 
-The YAML is organized to follow the training flow: set up the model, configure fixed settings, configure the unified phase, configure expert overrides, then output settings.
+The YAML is organized to follow the training flow: set up the model, configure fixed settings, configure the full_noise phase, configure expert overrides, then output settings.
 
 ### Section 1: Model & Data
 
@@ -90,7 +90,7 @@ This section is split into **fixed** and **overridable** zones.
 
 Fixed settings (optimizer type, betas, eps, gradient clipping) stay constant for the entire run. You pick your optimizer once.
 
-Learning rate and weight decay are **starting values** — they apply during the unified phase and each expert inherits them after fork, unless overridden per-expert.
+Learning rate and weight decay are **starting values** — they apply during the full_noise phase and each expert inherits them after fork, unless overridden per-expert.
 
 **Why 5e-5?** Community recommendations (2e-4) are too aggressive for Wan 2.2, especially for the low-noise expert which overfits rapidly at high LR. 5e-5 is conservative. Each expert overrides as needed.
 

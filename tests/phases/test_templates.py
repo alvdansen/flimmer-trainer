@@ -23,7 +23,7 @@ class TestMoeStandardTemplate:
 
         project = template_moe_standard("test_moe")
         types = [entry.config.phase_type for entry in project.phases]
-        assert types == ["unified", "high_noise", "low_noise"]
+        assert types == ["full_noise", "high_noise", "low_noise"]
 
     def test_model_id(self, register_all_models):
         from flimmer.phases.templates import template_moe_standard
@@ -84,11 +84,11 @@ class TestWan21FinetuneTemplate:
         project = template_wan21_finetune("test_finetune")
         assert len(project.phases) == 1
 
-    def test_phase_type_is_unified(self, register_all_models):
+    def test_phase_type_is_full_noise(self, register_all_models):
         from flimmer.phases.templates import template_wan21_finetune
 
         project = template_wan21_finetune("test_finetune")
-        assert project.phases[0].config.phase_type == "unified"
+        assert project.phases[0].config.phase_type == "full_noise"
 
     def test_model_id(self, register_all_models):
         from flimmer.phases.templates import template_wan21_finetune

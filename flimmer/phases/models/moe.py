@@ -1,7 +1,7 @@
 """Wan 2.2 T2V 14B (MoE) model definition.
 
 Mixture-of-Experts model with three phase types:
-- unified: Both experts share one LoRA, no expert masking
+- full_noise: Both experts share one LoRA, no expert masking
 - high_noise: High-noise expert (coarse composition, motion)
 - low_noise: Low-noise expert (fine detail, texture)
 
@@ -37,7 +37,7 @@ WAN_22_T2V = ModelDefinition(
     ],
     phase_types=[
         PhaseTypeDeclaration(
-            name="unified",
+            name="full_noise",
             description="Both experts share one LoRA. No expert masking.",
         ),
         PhaseTypeDeclaration(

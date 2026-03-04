@@ -397,7 +397,7 @@ class SamplingEngine:
 
         # Use the same abbreviations as checkpoint manager
         abbrevs = {
-            PhaseType.UNIFIED: "unified",
+            PhaseType.UNIFIED: "full_noise",
             PhaseType.HIGH_NOISE: "high",
             PhaseType.LOW_NOISE: "low",
         }

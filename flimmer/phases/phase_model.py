@@ -10,9 +10,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from .errors import PhaseConfigError
+
+# Backward compat: old phase type names → current names
+_PHASE_TYPE_ALIASES: dict[str, str] = {
+    "unified": "full_noise",
+}
 
 if TYPE_CHECKING:
     from .definitions import ModelDefinition
@@ -37,6 +42,12 @@ class PhaseConfig(BaseModel):
     extras: dict[str, object] = {}
     dataset: str | None = None
     signals: dict[str, bool] | None = None
+
+    @field_validator("phase_type", mode="before")
+    @classmethod
+    def _normalize_phase_type(cls, v: str) -> str:
+        """Accept legacy phase type names (e.g. 'unified' → 'full_noise')."""
+        return _PHASE_TYPE_ALIASES.get(v, v)
 
     def validate_against(self, model_def: ModelDefinition) -> None:
         """Validate this config against a model definition.

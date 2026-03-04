@@ -1,11 +1,11 @@
 """Tests for Wan 2.1 model definitions and multi-stage training.
 
 Verifies:
-- Wan 2.1 T2V and I2V register as non-MoE with unified-only phase type
+- Wan 2.1 T2V and I2V register as non-MoE with full_noise-only phase type
 - Wan 2.1 models have NO boundary_ratio param
 - I2V variants use first_frame modality (not reference_image) and first_frame_dropout_rate
 - Expert phase types fail validate_against() for non-MoE models
-- Multi-stage training via multiple unified PhaseConfigs with different overrides
+- Multi-stage training via multiple full_noise PhaseConfigs with different overrides
 - All four model definitions appear in list_models()
 """
 
@@ -61,10 +61,10 @@ class TestWan21T2vRegistration:
         model = get_model_definition("wan-2.1-t2v-14b")
         assert model.is_moe is False
 
-    def test_has_only_unified_phase_type(self, _register_all):
+    def test_has_only_full_noise_phase_type(self, _register_all):
         model = get_model_definition("wan-2.1-t2v-14b")
         phase_type_names = [pt.name for pt in model.phase_types]
-        assert phase_type_names == ["unified"]
+        assert phase_type_names == ["full_noise"]
 
     def test_no_boundary_ratio_param(self, _register_all):
         model = get_model_definition("wan-2.1-t2v-14b")
@@ -201,15 +201,15 @@ class TestT2vModelsUnaffected:
 
 
 class TestMultiStageTraining:
-    """Tests multi-stage training via multiple unified PhaseConfigs."""
+    """Tests multi-stage training via multiple full_noise PhaseConfigs."""
 
-    def test_two_unified_stages_resolve_independently(self, _register_all):
+    def test_two_full_noise_stages_resolve_independently(self, _register_all):
         model = get_model_definition("wan-2.1-t2v-14b")
         base_params = {p.name: p.default for p in model.phase_params}
 
         # Stage 1: warmup with higher LR
         stage1_config = PhaseConfig(
-            phase_type="unified",
+            phase_type="full_noise",
             display_name="Warmup",
             overrides={"learning_rate": 1e-4},
             dataset="./warmup.yaml",
@@ -217,7 +217,7 @@ class TestMultiStageTraining:
 
         # Stage 2: finetune with lower LR
         stage2_config = PhaseConfig(
-            phase_type="unified",
+            phase_type="full_noise",
             display_name="Finetune",
             overrides={"learning_rate": 5e-5},
             dataset="./finetune.yaml",
@@ -227,8 +227,8 @@ class TestMultiStageTraining:
         resolved2 = resolve_phase("wan-2.1-t2v-14b", stage2_config, base_params)
 
         # Both resolve successfully
-        assert resolved1.phase_type == "unified"
-        assert resolved2.phase_type == "unified"
+        assert resolved1.phase_type == "full_noise"
+        assert resolved2.phase_type == "full_noise"
 
         # Different LR overrides
         assert resolved1.params["learning_rate"] == 1e-4

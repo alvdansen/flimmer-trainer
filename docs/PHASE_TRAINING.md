@@ -119,21 +119,21 @@ run_level_params:
 
 # These execute in order, top to bottom
 phases:
-  - type: unified
+  - type: full_noise
     name: "Close-ups"
     overrides:
       data_config: ./data_closeups.yaml
       learning_rate: 5e-5
       max_epochs: 10
 
-  - type: unified
+  - type: full_noise
     name: "Full Body"
     overrides:
       data_config: ./data_fullbody.yaml
       learning_rate: 3e-5        # lower — don't overwrite Phase 1
       max_epochs: 15
 
-  - type: unified
+  - type: full_noise
     name: "Mixed Fine-tune"
     overrides:
       data_config: ./data_all.yaml
@@ -197,7 +197,7 @@ Wan 2.2 has two experts that handle different noise levels. The phase types chan
 ```yaml
 phases:
   # Both experts train together
-  - type: unified
+  - type: full_noise
     name: "Unified Warmup"
     overrides:
       learning_rate: 5e-5
@@ -218,7 +218,7 @@ phases:
       max_epochs: 50
 ```
 
-The only difference from the dataset-progression example is the `type` field. Instead of all phases being `unified`, you use `high_noise` and `low_noise` to tell Flimmer which expert to train.
+The only difference from the dataset-progression example is the `type` field. Instead of all phases being `full_noise`, you use `high_noise` and `low_noise` to tell Flimmer which expert to train.
 
 See `examples/projects/i2v_moe_phases.yaml` for a complete MoE project config.
 
@@ -227,4 +227,4 @@ See `examples/projects/i2v_moe_phases.yaml` for a complete MoE project config.
 | Example | What it shows |
 |---------|--------------|
 | `examples/projects/t2v_phases.yaml` | Dataset progression — close-ups → full-body → mixed |
-| `examples/projects/i2v_moe_phases.yaml` | MoE fork-and-specialize — unified → high-noise → low-noise |
+| `examples/projects/i2v_moe_phases.yaml` | MoE fork-and-specialize — full_noise → high-noise → low-noise |

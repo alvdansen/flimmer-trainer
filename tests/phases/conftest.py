@@ -141,7 +141,7 @@ def sample_model_definition(
         supported_signals=sample_signal_declarations,
         phase_types=[
             PhaseTypeDeclaration(
-                name="unified",
+                name="full_noise",
                 description="Single-phase training (all noise levels)",
                 required_fields=[],
             ),
@@ -166,10 +166,10 @@ def sample_model_definition(
 
 @pytest.fixture
 def sample_phase_config() -> PhaseConfig:
-    """PhaseConfig matching sample_model_definition's first phase type (unified),
+    """PhaseConfig matching sample_model_definition's first phase type (full_noise),
     with one override (learning_rate)."""
     return PhaseConfig(
-        phase_type="unified",
+        phase_type="full_noise",
         overrides={"learning_rate": 1e-4},
     )
 

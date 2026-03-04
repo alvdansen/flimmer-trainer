@@ -1704,7 +1704,7 @@ class SamplingConfig(BaseModel):
             raise ValueError(
                 f"skip_phases must be a list, got {type(v).__name__}."
             )
-        valid_phases = {"unified", "high_noise", "low_noise"}
+        valid_phases = {"full_noise", "unified", "high_noise", "low_noise"}
         for name in v:
             if name not in valid_phases:
                 valid_list = ", ".join(sorted(valid_phases))

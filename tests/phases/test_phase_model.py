@@ -12,8 +12,8 @@ class TestPhaseConfigCreation:
     """Test PhaseConfig creation with valid data."""
 
     def test_minimal_creation(self) -> None:
-        config = PhaseConfig(phase_type="unified")
-        assert config.phase_type == "unified"
+        config = PhaseConfig(phase_type="full_noise")
+        assert config.phase_type == "full_noise"
         assert config.display_name == ""
         assert config.enabled is True
         assert config.overrides == {}
@@ -36,7 +36,7 @@ class TestPhaseConfigCreation:
         assert config.extras == {"boundary_ratio": 0.875}
 
     def test_disabled_phase(self) -> None:
-        config = PhaseConfig(phase_type="unified", enabled=False)
+        config = PhaseConfig(phase_type="full_noise", enabled=False)
         assert config.enabled is False
 
 
@@ -46,7 +46,7 @@ class TestPhaseConfigValidation:
     def test_valid_config_passes(
         self, sample_model_definition: ModelDefinition
     ) -> None:
-        config = PhaseConfig(phase_type="unified")
+        config = PhaseConfig(phase_type="full_noise")
         # Should not raise
         config.validate_against(sample_model_definition)
 
@@ -54,7 +54,7 @@ class TestPhaseConfigValidation:
         self, sample_model_definition: ModelDefinition
     ) -> None:
         config = PhaseConfig(
-            phase_type="unified",
+            phase_type="full_noise",
             overrides={"learning_rate": 1e-4},
         )
         config.validate_against(sample_model_definition)
@@ -80,14 +80,14 @@ class TestPhaseConfigValidation:
         self, sample_model_definition: ModelDefinition
     ) -> None:
         config = PhaseConfig(phase_type="nonexistent")
-        with pytest.raises(PhaseConfigError, match="unified"):
+        with pytest.raises(PhaseConfigError, match="full_noise"):
             config.validate_against(sample_model_definition)
 
     def test_invalid_override_key_raises(
         self, sample_model_definition: ModelDefinition
     ) -> None:
         config = PhaseConfig(
-            phase_type="unified",
+            phase_type="full_noise",
             overrides={"no_such_param": 42},
         )
         with pytest.raises(PhaseConfigError, match="no_such_param"):
@@ -98,7 +98,7 @@ class TestPhaseConfigValidation:
     ) -> None:
         """Run-level params (phase_level=False) cannot be overridden per-phase."""
         config = PhaseConfig(
-            phase_type="unified",
+            phase_type="full_noise",
             overrides={"model_weights_path": "/some/path"},
         )
         with pytest.raises(PhaseConfigError, match="model_weights_path"):
@@ -108,7 +108,7 @@ class TestPhaseConfigValidation:
         self, sample_model_definition: ModelDefinition
     ) -> None:
         config = PhaseConfig(
-            phase_type="unified",
+            phase_type="full_noise",
             overrides={"learning_rate": 1e-9},  # min is 1e-6
         )
         with pytest.raises(PhaseConfigError, match="learning_rate"):
@@ -118,7 +118,7 @@ class TestPhaseConfigValidation:
         self, sample_model_definition: ModelDefinition
     ) -> None:
         config = PhaseConfig(
-            phase_type="unified",
+            phase_type="full_noise",
             overrides={"learning_rate": 1.0},  # max is 1e-3
         )
         with pytest.raises(PhaseConfigError, match="learning_rate"):
@@ -142,7 +142,7 @@ class TestResolvedPhase:
 
     def test_creation(self) -> None:
         resolved = ResolvedPhase(
-            phase_type="unified",
+            phase_type="full_noise",
             display_name="Main Phase",
             enabled=True,
             params={"learning_rate": 5e-5, "batch_size": 4},
@@ -150,7 +150,7 @@ class TestResolvedPhase:
             dataset=None,
             signals={"text": True},
         )
-        assert resolved.phase_type == "unified"
+        assert resolved.phase_type == "full_noise"
         assert resolved.display_name == "Main Phase"
         assert resolved.enabled is True
         assert resolved.params["learning_rate"] == 5e-5
@@ -159,7 +159,7 @@ class TestResolvedPhase:
 
     def test_frozen_cannot_assign_phase_type(self) -> None:
         resolved = ResolvedPhase(
-            phase_type="unified",
+            phase_type="full_noise",
             display_name="",
             enabled=True,
             params={},
@@ -172,7 +172,7 @@ class TestResolvedPhase:
 
     def test_frozen_cannot_assign_params(self) -> None:
         resolved = ResolvedPhase(
-            phase_type="unified",
+            phase_type="full_noise",
             display_name="",
             enabled=True,
             params={"learning_rate": 5e-5},
@@ -185,7 +185,7 @@ class TestResolvedPhase:
 
     def test_get_param_returns_value(self) -> None:
         resolved = ResolvedPhase(
-            phase_type="unified",
+            phase_type="full_noise",
             display_name="",
             enabled=True,
             params={"learning_rate": 5e-5, "batch_size": 4},
@@ -198,7 +198,7 @@ class TestResolvedPhase:
 
     def test_get_param_unknown_raises_key_error(self) -> None:
         resolved = ResolvedPhase(
-            phase_type="unified",
+            phase_type="full_noise",
             display_name="",
             enabled=True,
             params={"learning_rate": 5e-5},

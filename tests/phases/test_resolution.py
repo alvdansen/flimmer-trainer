@@ -37,7 +37,7 @@ class TestGetPhaseKnobs:
     def test_returns_phase_level_params(
         self, registered_model: ModelDefinition
     ) -> None:
-        knobs = get_phase_knobs("wan-2.2-t2v-14b", "unified")
+        knobs = get_phase_knobs("wan-2.2-t2v-14b", "full_noise")
         # Should include all phase_level=True params
         assert "learning_rate" in knobs
         assert "batch_size" in knobs
@@ -54,11 +54,11 @@ class TestGetPhaseKnobs:
         assert "boundary_ratio" in knobs
         assert isinstance(knobs["boundary_ratio"], ParamSpec)
 
-    def test_unified_phase_includes_phase_params(
+    def test_full_noise_phase_includes_phase_params(
         self, registered_model: ModelDefinition
     ) -> None:
-        """unified has no required_fields, but still gets all phase-level params."""
-        knobs = get_phase_knobs("wan-2.2-t2v-14b", "unified")
+        """full_noise has no required_fields, but still gets all phase-level params."""
+        knobs = get_phase_knobs("wan-2.2-t2v-14b", "full_noise")
         assert "learning_rate" in knobs
         assert "batch_size" in knobs
         assert "boundary_ratio" in knobs  # phase_level=True in sample
@@ -66,7 +66,7 @@ class TestGetPhaseKnobs:
     def test_returns_param_spec_objects(
         self, registered_model: ModelDefinition
     ) -> None:
-        knobs = get_phase_knobs("wan-2.2-t2v-14b", "unified")
+        knobs = get_phase_knobs("wan-2.2-t2v-14b", "full_noise")
         lr = knobs["learning_rate"]
         assert isinstance(lr, ParamSpec)
         assert lr.type == "float"
@@ -75,7 +75,7 @@ class TestGetPhaseKnobs:
 
     def test_unknown_model_raises(self) -> None:
         with pytest.raises(ModelNotFoundError, match="nonexistent"):
-            get_phase_knobs("nonexistent", "unified")
+            get_phase_knobs("nonexistent", "full_noise")
 
     def test_unknown_phase_type_raises(
         self, registered_model: ModelDefinition
@@ -92,10 +92,10 @@ class TestResolvePhase:
         registered_model: ModelDefinition,
         base_config: dict[str, float | int | str | bool],
     ) -> None:
-        config = PhaseConfig(phase_type="unified")
+        config = PhaseConfig(phase_type="full_noise")
         resolved = resolve_phase("wan-2.2-t2v-14b", config, base_config)
         assert isinstance(resolved, ResolvedPhase)
-        assert resolved.phase_type == "unified"
+        assert resolved.phase_type == "full_noise"
         # All phase-level params should have values from base_config
         assert resolved.params["learning_rate"] == base_config["learning_rate"]
         assert resolved.params["batch_size"] == base_config["batch_size"]
@@ -106,7 +106,7 @@ class TestResolvePhase:
         base_config: dict[str, float | int | str | bool],
     ) -> None:
         config = PhaseConfig(
-            phase_type="unified",
+            phase_type="full_noise",
             overrides={"learning_rate": 2e-4},
         )
         resolved = resolve_phase("wan-2.2-t2v-14b", config, base_config)
@@ -121,7 +121,7 @@ class TestResolvePhase:
     ) -> None:
         """None in overrides = inherit from base (the _resolve idiom)."""
         config = PhaseConfig(
-            phase_type="unified",
+            phase_type="full_noise",
             overrides={"learning_rate": None},
         )
         resolved = resolve_phase("wan-2.2-t2v-14b", config, base_config)
@@ -138,7 +138,7 @@ class TestResolvePhase:
             "dropout": 0.2,
             "boundary_ratio": 0.5,
         }
-        config = PhaseConfig(phase_type="unified")
+        config = PhaseConfig(phase_type="full_noise")
         resolved = resolve_phase("wan-2.2-t2v-14b", config, custom_base)
         assert resolved.params["learning_rate"] == 9e-5
         assert resolved.params["batch_size"] == 8
@@ -202,7 +202,7 @@ class TestResolvePhase:
         registered_model: ModelDefinition,
         base_config: dict[str, float | int | str | bool],
     ) -> None:
-        config = PhaseConfig(phase_type="unified")
+        config = PhaseConfig(phase_type="full_noise")
         resolved = resolve_phase("wan-2.2-t2v-14b", config, base_config)
         with pytest.raises(dataclasses.FrozenInstanceError):
             resolved.phase_type = "different"  # type: ignore[misc]
@@ -213,7 +213,7 @@ class TestResolvePhase:
         base_config: dict[str, float | int | str | bool],
     ) -> None:
         config = PhaseConfig(
-            phase_type="unified",
+            phase_type="full_noise",
             display_name="My Custom Phase",
         )
         resolved = resolve_phase("wan-2.2-t2v-14b", config, base_config)
@@ -224,7 +224,7 @@ class TestResolvePhase:
         registered_model: ModelDefinition,
         base_config: dict[str, float | int | str | bool],
     ) -> None:
-        config = PhaseConfig(phase_type="unified", enabled=False)
+        config = PhaseConfig(phase_type="full_noise", enabled=False)
         resolved = resolve_phase("wan-2.2-t2v-14b", config, base_config)
         assert resolved.enabled is False
 
@@ -306,7 +306,7 @@ class TestResolvePhaseDataset:
         base_config: dict[str, float | int | str | bool],
     ) -> None:
         """resolve_phase with no dataset -> ResolvedPhase.dataset is None."""
-        config = PhaseConfig(phase_type="unified")
+        config = PhaseConfig(phase_type="full_noise")
         resolved = resolve_phase("wan-2.2-t2v-14b", config, base_config)
         assert resolved.dataset is None
 
@@ -317,7 +317,7 @@ class TestResolvePhaseDataset:
     ) -> None:
         """resolve_phase with dataset path -> ResolvedPhase.dataset is the path."""
         config = PhaseConfig(
-            phase_type="unified",
+            phase_type="full_noise",
             dataset="./data.yaml",
         )
         resolved = resolve_phase("wan-2.2-t2v-14b", config, base_config)
@@ -333,7 +333,7 @@ class TestResolvePhaseSignals:
         base_config: dict[str, float | int | str | bool],
     ) -> None:
         """signals=None -> all model modalities enabled (True)."""
-        config = PhaseConfig(phase_type="unified")
+        config = PhaseConfig(phase_type="full_noise")
         resolved = resolve_phase("wan-2.2-t2v-14b", config, base_config)
         # Sample model has: text, video, reference_image, custom
         assert resolved.signals == {
@@ -350,7 +350,7 @@ class TestResolvePhaseSignals:
     ) -> None:
         """signals={"reference_image": False} -> merged with all-True defaults."""
         config = PhaseConfig(
-            phase_type="unified",
+            phase_type="full_noise",
             signals={"reference_image": False},
         )
         resolved = resolve_phase("wan-2.2-t2v-14b", config, base_config)
@@ -368,7 +368,7 @@ class TestResolvePhaseSignals:
     ) -> None:
         """signals={"text": False} -> text disabled, others True."""
         config = PhaseConfig(
-            phase_type="unified",
+            phase_type="full_noise",
             signals={"text": False},
         )
         resolved = resolve_phase("wan-2.2-t2v-14b", config, base_config)
@@ -384,7 +384,7 @@ class TestResolvePhaseSignals:
     ) -> None:
         """Multiple signal overrides merged correctly."""
         config = PhaseConfig(
-            phase_type="unified",
+            phase_type="full_noise",
             signals={"text": False, "custom": False},
         )
         resolved = resolve_phase("wan-2.2-t2v-14b", config, base_config)
@@ -402,7 +402,7 @@ class TestResolvePhaseSignals:
     ) -> None:
         """signals={} (no overrides) -> same as None, all enabled."""
         config = PhaseConfig(
-            phase_type="unified",
+            phase_type="full_noise",
             signals={},
         )
         resolved = resolve_phase("wan-2.2-t2v-14b", config, base_config)
@@ -420,7 +420,7 @@ class TestResolvePhaseSignals:
     ) -> None:
         """resolve_phase still validates config before resolving signals."""
         config = PhaseConfig(
-            phase_type="unified",
+            phase_type="full_noise",
             signals={"audio": True},  # Invalid modality
         )
         with pytest.raises(PhaseConfigError, match="audio"):

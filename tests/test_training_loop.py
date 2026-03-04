@@ -198,7 +198,7 @@ class TestDryRun:
         orch = TrainingOrchestrator(config, MockModelBackend())
         orch.run(dry_run=True)
         output = capsys.readouterr().out
-        assert "UNIFIED" in output
+        assert "FULL_NOISE" in output
 
     def test_dry_run_no_checkpoints(self, tmp_path):
         config = MockConfig(tmp_path)
@@ -218,7 +218,7 @@ class TestTrainingRun:
         config.save.save_every_n_epochs = 1
         orch = TrainingOrchestrator(config, MockModelBackend())
         orch.run(dataset=None)
-        assert (tmp_path / "output" / "unified").is_dir()
+        assert (tmp_path / "output" / "full_noise").is_dir()
 
     def test_saves_training_state(self, tmp_path):
         config = MockConfig(tmp_path, moe=MockMoeConfig(fork_enabled=False))
@@ -288,7 +288,7 @@ class TestPhaseTransitions:
         orch.run(dataset=None)
         output = capsys.readouterr().out
         # Should show fork message after unified phase
-        assert "FORK" in output or "unified" in output.lower()
+        assert "FORK" in output or "full_noise" in output.lower()
 
 
 # ---------------------------------------------------------------------------

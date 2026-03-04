@@ -39,7 +39,7 @@ WAN_22_I2V = ModelDefinition(
     ],
     phase_types=[
         PhaseTypeDeclaration(
-            name="unified",
+            name="full_noise",
             description="Both experts share one LoRA. No expert masking.",
         ),
         PhaseTypeDeclaration(

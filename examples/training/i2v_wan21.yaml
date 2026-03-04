@@ -3,7 +3,7 @@
 # ══════════════════════════════════════════════════════════════════════
 #
 # Image-to-Video training with Wan 2.1 14B. This is a non-MoE model,
-# so there is no expert fork — training runs as a single unified phase.
+# so there is no expert fork — training runs as a single full_noise phase.
 #
 # Simpler than Wan 2.2 MoE: one DiT file, no expert splitting, no
 # boundary_ratio tuning. Good starting point for I2V LoRA training.

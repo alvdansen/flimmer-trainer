@@ -4,7 +4,7 @@ Provides consistent logging across console, TensorBoard, and W&B.
 Each backend is optional — missing libraries are handled gracefully.
 
 Key features:
-    - Phase-prefixed logging (unified/, high_noise/, low_noise/)
+    - Phase-prefixed logging (full_noise/, high_noise/, low_noise/)
     - W&B define_metric() for per-phase panels (METR-01, METR-04)
     - Auto-descriptive run naming from config
     - VRAM metric logging (METR-03)
@@ -33,7 +33,7 @@ def generate_run_name(config: Any) -> str:
 
     Examples:
         wan22t2v-holly-fork-r16-lr1e-04
-        wan22t2v-default-unified-r16-lr5e-05
+        wan22t2v-default-full_noise-r16-lr5e-05
         wan22t2v-annika-expert-r24-lr8e-05
 
     Args:
@@ -60,7 +60,7 @@ def generate_run_name(config: Any) -> str:
     save_name = getattr(getattr(config, "save", None), "name", "default") or "default"
     parts.append(save_name.replace("flimmer_lora", "default"))
 
-    # Training mode — fork, expert, or unified
+    # Training mode — fork, expert, or full_noise
     moe = getattr(config, "moe", None)
     training = getattr(config, "training", None)
     moe_enabled = getattr(moe, "enabled", False) if moe else False
@@ -73,7 +73,7 @@ def generate_run_name(config: Any) -> str:
         else:
             parts.append("expert")
     else:
-        parts.append("unified")
+        parts.append("full_noise")
 
     # LoRA rank
     lora = getattr(config, "lora", None)
@@ -197,7 +197,7 @@ class TrainingLogger:
         """Initialize W&B run with define_metric() for per-phase panels.
 
         Sets up W&B with proper metric organization so each phase type
-        (unified, high_noise, low_noise) gets its own panel in the W&B
+        (full_noise, high_noise, low_noise) gets its own panel in the W&B
         dashboard. Also configures system metrics (VRAM) with appropriate
         summary aggregations.
 
@@ -244,8 +244,8 @@ class TrainingLogger:
                 run.define_metric("global_step")
 
                 # Per-phase metrics with their own panels
-                run.define_metric("unified/*", step_metric="global_step")
-                run.define_metric("unified/loss_ema", summary="min")
+                run.define_metric("full_noise/*", step_metric="global_step")
+                run.define_metric("full_noise/loss_ema", summary="min")
 
                 run.define_metric("high_noise/*", step_metric="global_step")
                 run.define_metric("high_noise/loss_ema", summary="min")

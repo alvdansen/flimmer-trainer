@@ -1,6 +1,6 @@
 """Wan 2.1 I2V 14B (non-MoE) model definition.
 
-Image-to-Video variant of Wan 2.1. Non-MoE, unified phase type only.
+Image-to-Video variant of Wan 2.1. Non-MoE, full_noise phase type only.
 Adds first_frame signal and uses higher caption_dropout_rate default
 (0.15) because the first-frame image carries more conditioning.
 
@@ -40,7 +40,7 @@ WAN_21_I2V = ModelDefinition(
     ],
     phase_types=[
         PhaseTypeDeclaration(
-            name="unified",
+            name="full_noise",
             description="Standard single-phase training",
         ),
     ],

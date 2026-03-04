@@ -112,7 +112,7 @@ training:
 
 moe:
   enabled: true
-  fork_enabled: true                             # Fork into per-expert LoRAs after unified phase
+  fork_enabled: true                             # Fork into per-expert LoRAs after full_noise phase
   boundary_ratio: null                           # null = model default (0.900 for I2V)
   preload_experts: false                         # true = keep inactive expert in CPU RAM (~27 GB)
 

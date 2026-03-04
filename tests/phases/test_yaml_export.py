@@ -15,10 +15,10 @@ from flimmer.phases.project import Project
 
 @pytest.fixture
 def non_moe_project(register_all_models):
-    """Wan 2.1 T2V project with one unified phase (non-MoE)."""
+    """Wan 2.1 T2V project with one full_noise phase (non-MoE)."""
     project = Project.create(name="test_t2v", model_id="wan-2.1-t2v-14b")
     project.add_phase(PhaseConfig(
-        phase_type="unified",
+        phase_type="full_noise",
         display_name="Standard Training",
         overrides={"learning_rate": 5e-5, "max_epochs": 100},
     ))
@@ -27,10 +27,10 @@ def non_moe_project(register_all_models):
 
 @pytest.fixture
 def moe_project(register_all_models):
-    """Wan 2.2 T2V project with unified + high_noise + low_noise phases (MoE)."""
+    """Wan 2.2 T2V project with full_noise + high_noise + low_noise phases (MoE)."""
     project = Project.create(name="test_moe", model_id="wan-2.2-t2v-14b")
     project.add_phase(PhaseConfig(
-        phase_type="unified",
+        phase_type="full_noise",
         display_name="Warmup",
         overrides={"learning_rate": 5e-5, "max_epochs": 10},
     ))
@@ -51,10 +51,10 @@ def moe_project(register_all_models):
 
 @pytest.fixture
 def i2v_project(register_all_models):
-    """Wan 2.1 I2V project with one unified phase (non-MoE, has first_frame signal)."""
+    """Wan 2.1 I2V project with one full_noise phase (non-MoE, has first_frame signal)."""
     project = Project.create(name="test_i2v", model_id="wan-2.1-i2v-14b")
     project.add_phase(PhaseConfig(
-        phase_type="unified",
+        phase_type="full_noise",
         display_name="I2V Training",
         overrides={"learning_rate": 5e-5, "max_epochs": 50},
     ))
@@ -165,18 +165,18 @@ class TestMoeExport:
         assert data["moe"]["boundary_ratio"] == pytest.approx(0.875)
 
     def test_moe_expert_overrides(self, moe_project, tmp_path):
-        """Expert phases include only params that differ from the base/unified phase."""
+        """Expert phases include only params that differ from the base/full_noise phase."""
         from flimmer.phases.yaml_export import export_yaml
 
         out = export_yaml(moe_project, tmp_path / "config.yaml")
         data = yaml.safe_load(out.read_text())
 
-        # high_noise expert: learning_rate and max_epochs differ from unified
+        # high_noise expert: learning_rate and max_epochs differ from full_noise
         hn = data["moe"]["high_noise"]
         assert hn["learning_rate"] == pytest.approx(1e-4)
         assert hn["max_epochs"] == 30
 
-        # low_noise expert: learning_rate and max_epochs differ from unified
+        # low_noise expert: learning_rate and max_epochs differ from full_noise
         ln = data["moe"]["low_noise"]
         assert ln["learning_rate"] == pytest.approx(8e-5)
         assert ln["max_epochs"] == 50
@@ -188,7 +188,7 @@ class TestMoeExport:
         out = export_yaml(moe_project, tmp_path / "config.yaml")
         data = yaml.safe_load(out.read_text())
 
-        # Params that are the same as unified should NOT be in expert blocks
+        # Params that are the same as full_noise should NOT be in expert blocks
         hn = data["moe"]["high_noise"]
         assert "batch_size" not in hn
         assert "weight_decay" not in hn
@@ -201,8 +201,8 @@ class TestMoeExport:
         data = yaml.safe_load(out.read_text())
         assert "signals" not in data
 
-    def test_moe_base_config_from_unified(self, moe_project, tmp_path):
-        """The base optimizer/training/scheduler values come from the unified phase."""
+    def test_moe_base_config_from_full_noise(self, moe_project, tmp_path):
+        """The base optimizer/training/scheduler values come from the full_noise phase."""
         from flimmer.phases.yaml_export import export_yaml
 
         out = export_yaml(moe_project, tmp_path / "config.yaml")
@@ -248,12 +248,12 @@ class TestDisabledPhaseSkipping:
 
         project = Project.create(name="test_disabled", model_id="wan-2.1-t2v-14b")
         project.add_phase(PhaseConfig(
-            phase_type="unified",
+            phase_type="full_noise",
             display_name="Active Phase",
             overrides={"learning_rate": 5e-5, "max_epochs": 50},
         ))
         project.add_phase(PhaseConfig(
-            phase_type="unified",
+            phase_type="full_noise",
             display_name="Disabled Phase",
             enabled=False,
             overrides={"learning_rate": 1e-4, "max_epochs": 200},
@@ -273,7 +273,7 @@ class TestDatasetPath:
 
         project = Project.create(name="test_ds", model_id="wan-2.1-t2v-14b")
         project.add_phase(PhaseConfig(
-            phase_type="unified",
+            phase_type="full_noise",
             display_name="With Dataset",
             overrides={"learning_rate": 5e-5, "max_epochs": 10},
             dataset="./data/train.yaml",

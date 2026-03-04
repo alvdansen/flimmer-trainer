@@ -36,7 +36,7 @@ class TestShouldSample:
     def test_skip_phase(self):
         engine = SamplingEngine(
             enabled=True, prompts=["test"], every_n_epochs=5,
-            skip_phases=["unified"],
+            skip_phases=["full_noise"],
         )
         assert not engine.should_sample(5, PhaseType.UNIFIED)
         assert engine.should_sample(5, PhaseType.HIGH_NOISE)
@@ -123,7 +123,7 @@ class TestOutputDir:
         engine = SamplingEngine(sample_dir=tmp_path)
         out = engine.get_output_dir(PhaseType.UNIFIED, epoch=5)
         assert out.is_dir()
-        assert "unified_epoch005" in out.name
+        assert "full_noise_epoch005" in out.name
 
     def test_expert_dir(self, tmp_path):
         engine = SamplingEngine(sample_dir=tmp_path)

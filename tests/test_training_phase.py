@@ -84,13 +84,13 @@ class MockConfig:
 
 class TestPhaseType:
     def test_values(self):
-        assert PhaseType.UNIFIED.value == "unified"
+        assert PhaseType.UNIFIED.value == "full_noise"
         assert PhaseType.HIGH_NOISE.value == "high_noise"
         assert PhaseType.LOW_NOISE.value == "low_noise"
 
     def test_is_string_enum(self):
         assert isinstance(PhaseType.UNIFIED, str)
-        assert PhaseType.UNIFIED == "unified"
+        assert PhaseType.UNIFIED == "full_noise"
 
 
 # ---------------------------------------------------------------------------

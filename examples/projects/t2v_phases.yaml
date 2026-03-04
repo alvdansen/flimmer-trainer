@@ -72,7 +72,7 @@ phases:
 
   # Phase 1: Lock in facial identity from close-up footage.
   # Higher LR to establish the foundation quickly.
-  - type: unified
+  - type: full_noise
     name: "Close-ups"
     overrides:
       data_config: ./holly/data_closeups.yaml
@@ -81,7 +81,7 @@ phases:
 
   # Phase 2: Expand to full-body footage.
   # Lower LR to build on Phase 1 without overwriting it.
-  - type: unified
+  - type: full_noise
     name: "Full Body"
     overrides:
       data_config: ./holly/data_fullbody.yaml
@@ -90,7 +90,7 @@ phases:
 
   # Phase 3: Fine-tune on all footage combined.
   # Lowest LR to cement the connection between all shot types.
-  - type: unified
+  - type: full_noise
     name: "Mixed Fine-tune"
     overrides:
       data_config: ./holly/data_all.yaml

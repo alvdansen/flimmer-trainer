@@ -77,7 +77,7 @@ phases:
 
   # Phase 1: Both experts train together with shared LoRA weights.
   # This builds a general foundation before specializing.
-  - type: unified
+  - type: full_noise
     name: "Unified Warmup"
     overrides:
       learning_rate: 5e-5

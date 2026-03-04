@@ -88,13 +88,13 @@ class TestCheckpointMetadata:
 
     def test_create(self):
         meta = CheckpointMetadata(
-            phase="unified", epoch=5, global_step=500, loss=0.05
+            phase="full_noise", epoch=5, global_step=500, loss=0.05
         )
-        assert meta.phase == "unified"
+        assert meta.phase == "full_noise"
         assert meta.loss == 0.05
 
     def test_frozen(self):
-        meta = CheckpointMetadata(phase="unified", epoch=5, global_step=500, loss=0.05)
+        meta = CheckpointMetadata(phase="full_noise", epoch=5, global_step=500, loss=0.05)
         with pytest.raises(AttributeError):
             meta.epoch = 10  # type: ignore[misc]
 
@@ -105,7 +105,7 @@ class TestCheckpointManager:
     def test_ensure_dirs(self, tmp_path):
         mgr = CheckpointManager(tmp_path / "output", name="test")
         mgr.ensure_dirs()
-        assert (tmp_path / "output" / "unified").is_dir()
+        assert (tmp_path / "output" / "full_noise").is_dir()
         assert (tmp_path / "output" / "high_noise").is_dir()
         assert (tmp_path / "output" / "low_noise").is_dir()
         assert (tmp_path / "output" / "final").is_dir()
@@ -114,8 +114,8 @@ class TestCheckpointManager:
     def test_checkpoint_path(self, tmp_path):
         mgr = CheckpointManager(tmp_path, name="annika")
         path = mgr.checkpoint_path(PhaseType.UNIFIED, epoch=5)
-        assert path.name == "annika_unified_epoch005.safetensors"
-        assert path.parent.name == "unified"
+        assert path.name == "annika_full_noise_epoch005.safetensors"
+        assert path.parent.name == "full_noise"
 
     def test_checkpoint_path_expert(self, tmp_path):
         mgr = CheckpointManager(tmp_path, name="lora")

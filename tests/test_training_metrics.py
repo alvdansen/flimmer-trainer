@@ -104,7 +104,7 @@ class TestMetricsTracker:
         tracker.start_phase(PhaseType.HIGH_NOISE)
         tracker.update(loss=0.2)
         all_metrics = tracker.get_all_metrics()
-        assert "unified/loss_raw" in all_metrics
+        assert "full_noise/loss_raw" in all_metrics
         assert "high_noise/loss_raw" in all_metrics
 
     def test_tracked_phases(self):
@@ -131,9 +131,9 @@ class TestRunTimer:
         """start_phase + end_phase records timing for the named phase."""
         timer = RunTimer()
         timer.start_run()
-        timer.start_phase("unified")
+        timer.start_phase("full_noise")
         time.sleep(0.01)
-        elapsed = timer.end_phase("unified")
+        elapsed = timer.end_phase("full_noise")
         assert elapsed > 0.0
 
     def test_phase_times_property(self):

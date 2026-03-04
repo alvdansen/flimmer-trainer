@@ -238,6 +238,9 @@ class LoRAState:
         rank = int(metadata.get("rank", "0"))
         alpha = int(metadata.get("alpha", str(rank)))
         phase_str = metadata.get("phase_type", PhaseType.UNIFIED.value)
+        # Backward compat: accept "unified" from old safetensors files
+        if phase_str == "unified":
+            phase_str = "full_noise"
         try:
             phase_type = PhaseType(phase_str)
         except ValueError:

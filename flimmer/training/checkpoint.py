@@ -5,8 +5,8 @@ Checkpoints are organized by phase:
 
     {output_dir}/
         training_state.json              ← phase, epoch, step (for resumption)
-        unified/
-            {name}_unified_epoch005.safetensors
+        full_noise/
+            {name}_full_noise_epoch005.safetensors
         high_noise/
             {name}_high_epoch015.safetensors
         low_noise/
@@ -15,11 +15,11 @@ Checkpoints are organized by phase:
             {name}_merged.safetensors    ← final merged LoRA for inference
 
 Six resumption scenarios:
-    1. Crashed mid-unified → resume at last unified checkpoint
+    1. Crashed mid-full-noise → resume at last full_noise checkpoint
     2. Crashed mid-high-noise → resume at last high-noise checkpoint
     3. Crashed mid-low-noise → resume at last low-noise checkpoint
-    4. Completed unified → resume at fork point
-    5. Expert-from-scratch (no unified) → start expert directly
+    4. Completed full_noise → resume at fork point
+    5. Expert-from-scratch (no full_noise) → start expert directly
     6. Expert has resume_from → load that LoRA as starting point
 """
 
@@ -43,16 +43,26 @@ TRAINING_STATE_FILENAME = "training_state.json"
 
 # Phase type → subdirectory name
 PHASE_DIRS: dict[PhaseType, str] = {
-    PhaseType.UNIFIED: "unified",
+    PhaseType.UNIFIED: "full_noise",
     PhaseType.HIGH_NOISE: "high_noise",
     PhaseType.LOW_NOISE: "low_noise",
 }
 
 # Phase type → filename abbreviation
 PHASE_ABBREV: dict[PhaseType, str] = {
-    PhaseType.UNIFIED: "unified",
+    PhaseType.UNIFIED: "full_noise",
     PhaseType.HIGH_NOISE: "high",
     PhaseType.LOW_NOISE: "low",
+}
+
+# Legacy directory names (pre-rename) for backward-compatible checkpoint discovery
+_LEGACY_DIRS: dict[PhaseType, str] = {
+    PhaseType.UNIFIED: "unified",
+}
+
+# Legacy filename abbreviations for backward-compatible checkpoint discovery
+_LEGACY_ABBREV: dict[PhaseType, str] = {
+    PhaseType.UNIFIED: "unified",
 }
 
 
@@ -67,7 +77,7 @@ class CheckpointMetadata:
     Stored in the training_state.json alongside the checkpoint paths.
     """
     phase: str
-    """Phase type value string ('unified', 'high_noise', 'low_noise')."""
+    """Phase type value string ('full_noise', 'high_noise', 'low_noise')."""
 
     epoch: int
     """Epoch number when this checkpoint was saved."""
@@ -90,7 +100,7 @@ class TrainingState:
     phase_index: int = 0
     """Index into the resolved phases list (0-based)."""
 
-    phase_type: str = "unified"
+    phase_type: str = "full_noise"
     """Current phase type value string."""
 
     epoch: int = 0
@@ -140,9 +150,14 @@ class TrainingState:
         Backward compatible: missing fields default to None/0 so
         old training_state.json files (without wandb_run_id) still load.
         """
+        # Backward compat: accept "unified" from old training_state.json files
+        raw_phase = data.get("phase_type", "full_noise")
+        if raw_phase == "unified":
+            raw_phase = "full_noise"
+
         return TrainingState(
             phase_index=data.get("phase_index", 0),
-            phase_type=data.get("phase_type", "unified"),
+            phase_type=raw_phase,
             epoch=data.get("epoch", 0),
             global_step=data.get("global_step", 0),
             unified_lora_path=data.get("unified_lora_path"),
@@ -189,14 +204,14 @@ class CheckpointManager:
 
         Creates:
             {output_dir}/
-            {output_dir}/unified/
+            {output_dir}/full_noise/
             {output_dir}/high_noise/
             {output_dir}/low_noise/
             {output_dir}/final/
             {output_dir}/samples/
         """
         self._output_dir.mkdir(parents=True, exist_ok=True)
-        for subdir in ["unified", "high_noise", "low_noise", "final", "samples"]:
+        for subdir in ["full_noise", "high_noise", "low_noise", "final", "samples"]:
             (self._output_dir / subdir).mkdir(exist_ok=True)
 
     def checkpoint_path(
@@ -295,6 +310,7 @@ class CheckpointManager:
 
         Searches the phase subdirectory for safetensors files matching
         the naming convention and returns the one with the highest epoch.
+        Also checks legacy directory/abbreviation names for backward compat.
 
         Args:
             phase_type: Training phase to search.
@@ -302,27 +318,38 @@ class CheckpointManager:
         Returns:
             Path to the latest checkpoint, or None if none exist.
         """
-        subdir = self._output_dir / PHASE_DIRS[phase_type]
-        if not subdir.is_dir():
-            return None
-
-        abbrev = PHASE_ABBREV[phase_type]
-        pattern = f"{self._name}_{abbrev}_epoch*.safetensors"
-
-        checkpoints = sorted(subdir.glob(pattern))
-        if not checkpoints:
-            return None
-
-        # Sort by epoch number (extracted from filename)
         def _epoch_from_path(p: Path) -> int:
             match = re.search(r"epoch(\d+)", p.stem)
             return int(match.group(1)) if match else 0
 
-        checkpoints.sort(key=_epoch_from_path)
-        return checkpoints[-1]
+        all_checkpoints: list[Path] = []
+
+        # Search current directory + abbreviation
+        subdir = self._output_dir / PHASE_DIRS[phase_type]
+        abbrev = PHASE_ABBREV[phase_type]
+        if subdir.is_dir():
+            pattern = f"{self._name}_{abbrev}_epoch*.safetensors"
+            all_checkpoints.extend(subdir.glob(pattern))
+
+        # Search legacy directory + abbreviation (backward compat)
+        legacy_dir = _LEGACY_DIRS.get(phase_type)
+        legacy_abbrev = _LEGACY_ABBREV.get(phase_type)
+        if legacy_dir:
+            legacy_subdir = self._output_dir / legacy_dir
+            if legacy_subdir.is_dir() and legacy_abbrev:
+                pattern = f"{self._name}_{legacy_abbrev}_epoch*.safetensors"
+                all_checkpoints.extend(legacy_subdir.glob(pattern))
+
+        if not all_checkpoints:
+            return None
+
+        all_checkpoints.sort(key=_epoch_from_path)
+        return all_checkpoints[-1]
 
     def list_checkpoints(self, phase_type: PhaseType) -> list[Path]:
         """List all checkpoints for a phase, sorted by epoch.
+
+        Includes checkpoints from legacy directory names for backward compat.
 
         Args:
             phase_type: Training phase.
@@ -330,19 +357,30 @@ class CheckpointManager:
         Returns:
             List of checkpoint paths, oldest first.
         """
-        subdir = self._output_dir / PHASE_DIRS[phase_type]
-        if not subdir.is_dir():
-            return []
-
-        abbrev = PHASE_ABBREV[phase_type]
-        pattern = f"{self._name}_{abbrev}_epoch*.safetensors"
-
         def _epoch_from_path(p: Path) -> int:
             match = re.search(r"epoch(\d+)", p.stem)
             return int(match.group(1)) if match else 0
 
-        checkpoints = sorted(subdir.glob(pattern), key=_epoch_from_path)
-        return checkpoints
+        all_checkpoints: list[Path] = []
+
+        # Current directory + abbreviation
+        subdir = self._output_dir / PHASE_DIRS[phase_type]
+        abbrev = PHASE_ABBREV[phase_type]
+        if subdir.is_dir():
+            pattern = f"{self._name}_{abbrev}_epoch*.safetensors"
+            all_checkpoints.extend(subdir.glob(pattern))
+
+        # Legacy directory + abbreviation (backward compat)
+        legacy_dir = _LEGACY_DIRS.get(phase_type)
+        legacy_abbrev = _LEGACY_ABBREV.get(phase_type)
+        if legacy_dir:
+            legacy_subdir = self._output_dir / legacy_dir
+            if legacy_subdir.is_dir() and legacy_abbrev:
+                pattern = f"{self._name}_{legacy_abbrev}_epoch*.safetensors"
+                all_checkpoints.extend(legacy_subdir.glob(pattern))
+
+        all_checkpoints.sort(key=_epoch_from_path)
+        return all_checkpoints
 
     def prune_checkpoints(self, phase_type: PhaseType) -> list[Path]:
         """Remove old checkpoints exceeding the max_checkpoints limit.

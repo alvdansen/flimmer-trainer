@@ -43,13 +43,13 @@ class TestValidationIssue:
     def test_create_with_all_fields(self):
         issue = ValidationIssue(
             phase_index=0,
-            phase_type="unified",
+            phase_type="full_noise",
             param="learning_rate",
             message="Value out of range",
             severity="error",
         )
         assert issue.phase_index == 0
-        assert issue.phase_type == "unified"
+        assert issue.phase_type == "full_noise"
         assert issue.param == "learning_rate"
         assert issue.message == "Value out of range"
         assert issue.severity == "error"
@@ -67,7 +67,7 @@ class TestValidationIssue:
     def test_is_frozen_immutable(self):
         issue = ValidationIssue(
             phase_index=0,
-            phase_type="unified",
+            phase_type="full_noise",
             param=None,
             message="test",
             severity="error",
@@ -85,20 +85,20 @@ class TestValidationResult:
 
     def test_valid_when_only_warnings(self):
         result = ValidationResult(issues=[
-            ValidationIssue(0, "unified", "learning_rate", "Suspiciously low", "warning"),
+            ValidationIssue(0, "full_noise", "learning_rate", "Suspiciously low", "warning"),
         ])
         assert result.valid is True
 
     def test_invalid_when_has_error(self):
         result = ValidationResult(issues=[
-            ValidationIssue(0, "unified", "learning_rate", "Out of range", "error"),
+            ValidationIssue(0, "full_noise", "learning_rate", "Out of range", "error"),
         ])
         assert result.valid is False
 
     def test_invalid_when_mixed_errors_and_warnings(self):
         result = ValidationResult(issues=[
-            ValidationIssue(0, "unified", "learning_rate", "Suspiciously low", "warning"),
-            ValidationIssue(1, "unified", None, "Bad phase type", "error"),
+            ValidationIssue(0, "full_noise", "learning_rate", "Suspiciously low", "warning"),
+            ValidationIssue(1, "full_noise", None, "Bad phase type", "error"),
         ])
         assert result.valid is False
 
@@ -108,12 +108,12 @@ class TestValidationResult:
 
     def test_format_with_error_and_param(self):
         result = ValidationResult(issues=[
-            ValidationIssue(0, "unified", "learning_rate", "Out of range", "error"),
+            ValidationIssue(0, "full_noise", "learning_rate", "Out of range", "error"),
         ])
         text = result.format()
         assert "ERROR" in text
         assert "Phase 0" in text
-        assert "(unified)" in text
+        assert "(full_noise)" in text
         assert "[learning_rate]" in text
         assert "Out of range" in text
 
@@ -129,11 +129,11 @@ class TestValidationResult:
         assert "[" not in text or "[None]" not in text
 
     def test_format_omits_param_bracket_when_none(self):
-        issue = ValidationIssue(0, "unified", None, "msg", "error")
+        issue = ValidationIssue(0, "full_noise", None, "msg", "error")
         result = ValidationResult(issues=[issue])
         text = result.format()
         # Should NOT have [] brackets for param
-        # Pattern: "Phase 0 (unified): msg" not "Phase 0 (unified)[]: msg"
+        # Pattern: "Phase 0 (full_noise): msg" not "Phase 0 (full_noise)[]: msg"
         assert "[]" not in text
         assert "[None]" not in text
 
@@ -145,7 +145,7 @@ class TestValidateProject:
         project = _StubProject(
             model_id="wan-2.1-t2v-14b",
             phases=[
-                _StubPhaseEntry(PhaseConfig(phase_type="unified")),
+                _StubPhaseEntry(PhaseConfig(phase_type="full_noise")),
             ],
         )
         result = validate_project(project)
@@ -173,7 +173,7 @@ class TestValidateProject:
             model_id="wan-2.1-t2v-14b",
             phases=[
                 _StubPhaseEntry(PhaseConfig(
-                    phase_type="unified",
+                    phase_type="full_noise",
                     overrides={"learning_rate": 999.0},  # way above max 1e-2
                 )),
             ],
@@ -208,7 +208,7 @@ class TestValidateProject:
             model_id="wan-2.1-t2v-14b",
             phases=[
                 _StubPhaseEntry(PhaseConfig(
-                    phase_type="unified",
+                    phase_type="full_noise",
                     overrides={"learning_rate": 1e-6},  # exactly at min
                 )),
             ],

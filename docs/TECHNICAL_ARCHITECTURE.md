@@ -110,7 +110,7 @@ moe:
     max_epochs: 50
 ```
 
-**What is this?** Wan 2.2 has two transformer experts — a high-noise expert (handles early denoising: global composition, motion planning) and a low-noise expert (handles late denoising: fine detail, texture). In standard training, both get the same LoRA with the same hyperparameters. Phased training lets you warm up both together (unified phase), then fork the LoRA into two copies and train each expert independently with its own learning rate, epoch count, and other settings.
+**What is this?** Wan 2.2 has two transformer experts — a high-noise expert (handles early denoising: global composition, motion planning) and a low-noise expert (handles late denoising: fine detail, texture). In standard training, both get the same LoRA with the same hyperparameters. Phased training lets you warm up both together (full_noise phase), then fork the LoRA into two copies and train each expert independently with its own learning rate, epoch count, and other settings.
 
 **This is theoretical.** The idea that each expert benefits from different training intensities is plausible given their architectural specialization, but it hasn't been fully validated yet. We're actively running experiments to compare results. The unified-only mode (`fork_enabled: false`) works identically to standard training in other tools.
 

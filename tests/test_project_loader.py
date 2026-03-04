@@ -52,7 +52,7 @@ SAMPLE_PROJECT_YAML = {
     },
     "phases": [
         {
-            "type": "unified",
+            "type": "full_noise",
             "name": "Unified Warmup",
             "overrides": {
                 "learning_rate": 5e-5,
@@ -166,7 +166,7 @@ class TestLoadProjectYaml:
         assert data["model_id"] == "wan-2.2-t2v-14b"
         assert data["base_config"] == "./base_train.yaml"
         assert len(data["phases"]) == 3
-        assert data["phases"][0]["type"] == "unified"
+        assert data["phases"][0]["type"] == "full_noise"
         assert data["run_level_params"]["lora_rank"] == 32
 
     def test_loads_phases_with_extras(self, tmp_path):
@@ -197,7 +197,7 @@ class TestProjectFromYaml:
         assert project.name == "test_project"
         assert project.model_id == "wan-2.2-t2v-14b"
         assert len(project.phases) == 3
-        assert project.phases[0].config.phase_type == "unified"
+        assert project.phases[0].config.phase_type == "full_noise"
         assert project.phases[0].config.display_name == "Unified Warmup"
         assert project.phases[1].config.phase_type == "high_noise"
         assert project.phases[2].config.phase_type == "low_noise"

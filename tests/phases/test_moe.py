@@ -57,7 +57,7 @@ class TestMoeRegistration:
     def test_moe_model_has_correct_phase_types(self, _register_models):
         model = get_model_definition("wan-2.2-t2v-14b")
         phase_type_names = [pt.name for pt in model.phase_types]
-        assert "unified" in phase_type_names
+        assert "full_noise" in phase_type_names
         assert "high_noise" in phase_type_names
         assert "low_noise" in phase_type_names
         assert len(phase_type_names) == 3
@@ -67,7 +67,7 @@ class TestMoeRegistration:
         for pt in model.phase_types:
             if pt.name in ("high_noise", "low_noise"):
                 assert "boundary_ratio" in pt.required_fields
-            elif pt.name == "unified":
+            elif pt.name == "full_noise":
                 assert "boundary_ratio" not in pt.required_fields
 
     def test_moe_has_phase_level_params(self, _register_models):
@@ -117,10 +117,10 @@ class TestMoeResolution:
         model = get_model_definition("wan-2.2-t2v-14b")
         return {p.name: p.default for p in model.phase_params}
 
-    def test_unified_resolves_without_boundary_ratio_in_extras(self, base_params):
-        config = PhaseConfig(phase_type="unified")
+    def test_full_noise_resolves_without_boundary_ratio_in_extras(self, base_params):
+        config = PhaseConfig(phase_type="full_noise")
         resolved = resolve_phase("wan-2.2-t2v-14b", config, base_params)
-        assert resolved.phase_type == "unified"
+        assert resolved.phase_type == "full_noise"
         # boundary_ratio should be in params (it's phase-level) but not required in extras
         assert "boundary_ratio" in resolved.params
         assert resolved.extras == {}

@@ -35,7 +35,7 @@ def template_moe_standard(
     project = Project.create(name=name, model_id=model_id)
 
     project.add_phase(PhaseConfig(
-        phase_type="unified",
+        phase_type="full_noise",
         display_name="Unified Warmup",
         overrides={"learning_rate": 5e-5, "max_epochs": 10},
     ))
@@ -73,7 +73,7 @@ def template_wan21_finetune(
     project = Project.create(name=name, model_id=model_id)
 
     project.add_phase(PhaseConfig(
-        phase_type="unified",
+        phase_type="full_noise",
         display_name="Standard Training",
         overrides={"learning_rate": 5e-5, "max_epochs": 100},
     ))

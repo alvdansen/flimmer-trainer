@@ -143,8 +143,8 @@ class TestPhaseTypeDeclaration:
     """PhaseTypeDeclaration has name, description, required_fields."""
 
     def test_basic_creation(self) -> None:
-        pt = PhaseTypeDeclaration(name="unified", description="All noise levels")
-        assert pt.name == "unified"
+        pt = PhaseTypeDeclaration(name="full_noise", description="All noise levels")
+        assert pt.name == "full_noise"
         assert pt.required_fields == []
 
     def test_with_required_fields(self) -> None:

@@ -9,14 +9,14 @@ Three training modes from two config switches:
 
     | Mode                    | fork_enabled | unified_epochs | Phases                    |
     |-------------------------|-------------|----------------|---------------------------|
-    | Fork-and-specialize     | true        | > 0            | unified → expert1 → expert2 |
-    | Unified only            | false       | any            | unified                   |
+    | Fork-and-specialize     | true        | > 0            | full_noise → expert1 → expert2 |
+    | Full noise only         | false       | any            | full_noise                |
     | Expert from scratch     | true        | 0              | expert1 → expert2         |
 
 Expert order is configurable via moe.expert_order (default: low_noise first).
 Either expert can be skipped with enabled: false.
 
-Single-expert models (Wan 2.1, non-MoE) always produce one unified phase
+Single-expert models (Wan 2.1, non-MoE) always produce one full_noise phase
 with no expert masking — the degenerate case of the state machine.
 """
 
@@ -35,15 +35,24 @@ from flimmer.training.errors import PhaseConfigError
 class PhaseType(str, Enum):
     """What kind of training phase this is.
 
-    UNIFIED: both experts share one LoRA. No expert masking.
+    UNIFIED: full noise range, both experts share one LoRA. No expert masking.
+        User-facing name: "full_noise". Accepts "unified" for backward compat.
     HIGH_NOISE: training the high-noise expert only. Loss masked to
         high-noise timesteps.
     LOW_NOISE: training the low-noise expert only. Loss masked to
         low-noise timesteps.
     """
-    UNIFIED = "unified"
+    UNIFIED = "full_noise"
     HIGH_NOISE = "high_noise"
     LOW_NOISE = "low_noise"
+
+    @classmethod
+    def _missing_(cls, value: object) -> PhaseType | None:
+        """Accept legacy phase type names (e.g. 'unified' → UNIFIED)."""
+        _ALIASES = {"unified": cls.UNIFIED}
+        if isinstance(value, str):
+            return _ALIASES.get(value)
+        return None
 
 
 # Default expert training order per variant.

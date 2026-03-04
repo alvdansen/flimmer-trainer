@@ -119,7 +119,7 @@ training:
 # ── MoE Expert Fork ──────────────────────────────────────────────────
 # Wan 2.2 routes between two experts by noise level. Both experts are
 # active during training regardless of mode. fork_enabled controls
-# whether they get separate LoRAs after the unified phase.
+# whether they get separate LoRAs after the full_noise phase.
 
 moe:
   enabled: true                            # This model has two noise-level experts

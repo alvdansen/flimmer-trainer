@@ -231,9 +231,9 @@ class RunTimer:
         timer = RunTimer()
         timer.start_run()
 
-        timer.start_phase("unified")
+        timer.start_phase("full_noise")
         # ... training ...
-        elapsed = timer.end_phase("unified")  # returns seconds
+        elapsed = timer.end_phase("full_noise")  # returns seconds
 
         total = timer.total_elapsed()
     """

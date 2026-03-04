@@ -169,7 +169,7 @@ def _resolved_to_flimmer_dict(
     """
     config: dict = {}
 
-    # Identify the base/unified phase (first resolved phase)
+    # Identify the base/full_noise phase (first resolved phase)
     base_phase = resolved_phases[0]
     base_params = base_phase.params
 

@@ -82,7 +82,7 @@ class TestTrainingLogger:
         logger.print_training_plan(phases)
         output = capsys.readouterr().out
         assert "TRAINING PLAN" in output
-        assert "UNIFIED" in output
+        assert "FULL_NOISE" in output
         assert "HIGH_NOISE" in output
         assert "Total phases: 2" in output
 
@@ -91,7 +91,7 @@ class TestTrainingLogger:
         phase = _make_phase()
         logger.log_phase_start(phase, phase_index=0)
         output = capsys.readouterr().out
-        assert "UNIFIED" in output
+        assert "FULL_NOISE" in output
         assert "10 epochs" in output
 
     def test_log_phase_end(self, capsys):
@@ -195,7 +195,7 @@ class TestGenerateRunName:
             optimizer=_MockOptimizer(learning_rate=5e-5),
         )
         name = generate_run_name(config)
-        assert name == "wan22t2v-annika-unified-r16-lr5e-05"
+        assert name == "wan22t2v-annika-full_noise-r16-lr5e-05"
 
     def test_expert_mode(self):
         """MoE enabled + fork enabled + unified_epochs == 0 = expert mode."""
@@ -263,14 +263,14 @@ class TestLogRunSummary:
         logger = TrainingLogger(backends=["console"])
         logger.log_run_summary(
             total_time=120.0,
-            phase_times={"unified": 60.0, "high_noise": 60.0},
+            phase_times={"full_noise": 60.0, "high_noise": 60.0},
             peak_vram_gb=12.5,
-            phase_losses={"unified": 0.0123, "high_noise": 0.0089},
+            phase_losses={"full_noise": 0.0123, "high_noise": 0.0089},
         )
         output = capsys.readouterr().out
         assert "TRAINING COMPLETE" in output
         assert "2.0 min" in output  # 120s = 2.0 min
-        assert "unified" in output
+        assert "full_noise" in output
         assert "high_noise" in output
 
     def test_summary_includes_loss(self, capsys):
@@ -280,7 +280,7 @@ class TestLogRunSummary:
             total_time=60.0,
             phase_times={},
             peak_vram_gb=0.0,
-            phase_losses={"unified": 0.012345},
+            phase_losses={"full_noise": 0.012345},
         )
         output = capsys.readouterr().out
         assert "0.012345" in output
@@ -368,7 +368,7 @@ class TestLogSamplesToWandb:
         video.write_bytes(b"fake video data")
         logger.log_samples_to_wandb(
             sample_paths=[video],
-            phase_type="unified",
+            phase_type="full_noise",
             epoch=5,
             global_step=100,
         )
@@ -390,7 +390,7 @@ class TestLogSamplesToWandb:
         # Should not crash even with non-existent files
         logger.log_samples_to_wandb(
             sample_paths=[missing],
-            phase_type="unified",
+            phase_type="full_noise",
             epoch=1,
             global_step=10,
         )

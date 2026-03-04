@@ -162,8 +162,8 @@ run_level_params:
   mixed_precision: bf16
 
 phases:
-  - type: unified
-    name: "Unified Warmup"
+  - type: full_noise
+    name: "Full Noise Warmup"
     overrides:
       learning_rate: 5e-5
       max_epochs: 15
