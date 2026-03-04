@@ -139,7 +139,7 @@ Fixed settings: precision (`bf16` for both training and frozen base model — no
 
 Unified phase settings: `unified_epochs` controls how long both experts share a single LoRA before forking. `unified_targets` and `unified_block_targets` can narrow what gets trained during the shared phase.
 
-**I2V differences:** I2V uses `unified_epochs: 15` (vs T2V's 10) because the reference image adds conditioning signal that benefits from more shared training. Caption dropout is higher at 0.15 (vs 0.10) to push the model toward relying on the reference image over text. The optional `first_frame_dropout_rate` (default 0, off) can be set to occasionally drop the reference image during training — useful if the model starts ignoring text prompts.
+**I2V differences:** I2V uses `unified_epochs: 15` (vs T2V's 10) because the first frame adds conditioning signal that benefits from more shared training. Caption dropout is higher at 0.15 (vs 0.10) to push the model toward relying on the first frame over text. The optional `first_frame_dropout_rate` (default 0, off) can be set to occasionally drop the first frame during training — useful if the model starts ignoring text prompts.
 
 **Why bf16 for base model?** Quality first. fp8 is available if VRAM-constrained but introduces quantization artifacts. The master file documents this tradeoff.
 
@@ -305,10 +305,10 @@ All constants with `T2V_` or `I2V_` prefixes. Organized into zones:
 **Sampling** — Default prompts, guidance scale (4.0), sample steps (30), seed (42). OFF by default.
 
 **I2V Differences** — Only the values that differ from T2V:
-- `I2V_IN_CHANNELS = 36` (16 noise + 20 reference image)
+- `I2V_IN_CHANNELS = 36` (16 noise + 20 first frame)
 - `I2V_BOUNDARY_RATIO = 0.900` (vs 0.875)
 - `I2V_UNIFIED_EPOCHS = 15` (longer — more shared signal)
-- `I2V_CAPTION_DROPOUT_RATE = 0.15` (higher — reference image carries conditioning)
+- `I2V_CAPTION_DROPOUT_RATE = 0.15` (higher — first frame carries conditioning)
 
 **Variant Defaults Map** — `VARIANT_DEFAULTS` dict maps `"2.2_t2v"` and `"2.2_i2v"` to their override dicts. The loader deep-merges these under the user's YAML.
 

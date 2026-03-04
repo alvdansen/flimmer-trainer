@@ -42,7 +42,7 @@ python -m flimmer.video ingest "path/to/video.mp4" -o clips
 # 2. Caption each clip
 python -m flimmer.video caption clips -p gemini -a "anchor word"
 
-# 3. Extract reference frames (for I2V training — skip for T2V)
+# 3. Extract first frames (for I2V training — skip for T2V)
 #    See the I2V Guide for details: docs/I2V_GUIDE.md
 python -m flimmer.video extract clips -o clips/references
 
@@ -79,7 +79,7 @@ python -m flimmer.video normalize "path/to/clips" -o ready
 # 3. Caption (skip if you already have .txt sidecar files — normalize copies them)
 python -m flimmer.video caption ready -p gemini -a "anchor word"
 
-# 4. Extract reference frames (for I2V — skip for T2V)
+# 4. Extract first frames (for I2V — skip for T2V)
 python -m flimmer.video extract ready -o ready/references
 
 # 5. Validate
@@ -95,14 +95,14 @@ python -m flimmer.training train -c train.yaml
 
 ## I2V Training (Image-to-Video)
 
-Same workflow as T2V, with one extra step: extract reference images from your clips.
+Same workflow as T2V, with one extra step: extract first frames from your clips.
 
 ```bash
 # 1. Prepare clips (same as T2V)
 python -m flimmer.video ingest "path/to/video.mp4" -o clips
 python -m flimmer.video caption clips -p gemini -a "anchor word"
 
-# 2. Extract first-frame reference images
+# 2. Extract first frames
 python -m flimmer.video extract clips -o clips/references
 
 # 3. Validate, encode, train (same as T2V)
@@ -115,7 +115,7 @@ python -m flimmer.training train -c i2v_train.yaml
 Key differences from T2V:
 - Reference images are VAE-encoded and concatenated to video latents (in_channels: 36 vs 16)
 - Higher caption dropout (0.15 vs 0.10) to strengthen image conditioning
-- `first_frame_dropout_rate` available to reduce reference image reliance
+- `first_frame_dropout_rate` available to reduce first frame reliance
 
 For a deep dive on I2V configuration, see [I2V Training Guide](I2V_GUIDE.md).
 
