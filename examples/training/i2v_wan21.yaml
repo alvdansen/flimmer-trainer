@@ -1,30 +1,24 @@
 # ══════════════════════════════════════════════════════════════════════
-# Flimmer I2V Training Config — Wan 2.2 (MoE)
+# Flimmer I2V Training Config — Wan 2.1 (Non-MoE)
 # ══════════════════════════════════════════════════════════════════════
 #
-# Image-to-Video training with Wan 2.2 14B MoE (Mixture of Experts).
+# Image-to-Video training with Wan 2.1 14B. This is a non-MoE model,
+# so there is no expert fork — training runs as a single unified phase.
 #
-# Wan 2.2 uses two expert DiTs that specialize on different noise levels:
-#   - High-noise expert: composition, motion, coarse structure
-#   - Low-noise expert: fine detail, texture, sharpness
-#
-# Recommended workflow (fork-and-specialize):
-#   1. Unified phase: train both experts together (shared LoRA weights)
-#   2. Expert fork: split into per-expert LoRAs with tuned hyperparameters
+# Simpler than Wan 2.2 MoE: one DiT file, no expert splitting, no
+# boundary_ratio tuning. Good starting point for I2V LoRA training.
 #
 # I2V key differences from T2V:
 #   - in_channels: 36 (16 video + 20 first frame latents)
-#   - boundary_ratio: 0.900 (I2V default, vs 0.500 for T2V)
-#   - First frame is VAE-encoded and concatenated to video latents
-#   - caption_dropout_rate: 0.15 (higher to strengthen image conditioning)
+#   - First frame is encoded by the VAE and concatenated to video latents
+#   - caption_dropout_rate: 0.15 (higher than T2V to strengthen image conditioning)
+#   - first_frame_dropout_rate: available to reduce first frame reliance
 #
 # Setup:
-#   bash scripts/setup.sh --variant 2.2_i2v
+#   bash scripts/setup.sh --variant 2.1_i2v_480p
 #
 # Usage:
-#   python -m flimmer.training train --config examples/i2v_wan22.yaml
-#
-# For multi-phase project management, see examples/project_moe.yaml.
+#   python -m flimmer.training train --config examples/training/i2v_wan21.yaml
 #
 # ══════════════════════════════════════════════════════════════════════
 
@@ -32,27 +26,26 @@
 # ── Model & Data ─────────────────────────────────────────────────────
 
 model:
-  variant: 2.2_i2v                               # MoE I2V model
+  variant: 2.1_i2v                               # Non-MoE I2V model
 
-  # Two expert DiT files (MoE = separate high/low noise transformers)
-  dit_high: ./models/wan2.2_i2v_high_noise_14B_fp16.safetensors
-  dit_low: ./models/wan2.2_i2v_low_noise_14B_fp16.safetensors
+  # Single DiT file (non-MoE = one unified transformer)
+  # For 720p, replace with: ./models/wan2.1_i2v_720p_14B_fp16.safetensors
+  dit: ./models/wan2.1_i2v_480p_14B_fp16.safetensors
 
   # Shared components (same across all Wan models)
   vae: ./models/wan_2.1_vae.safetensors
   t5: ./models/umt5_xxl_fp16.safetensors
 
-  # Architecture auto-fills from variant. These are the I2V MoE defaults:
-  # is_moe: true
+  # Architecture auto-fills from variant. These are the I2V defaults:
+  # is_moe: false                                # No expert routing
   # in_channels: 36                              # 16 video + 20 first frame
-  # boundary_ratio: 0.900                        # I2V noise boundary (higher than T2V 0.500)
   # flow_shift: 3.0
 
 # Point to your dataset's data config
 data_config: ./your_dataset/flimmer_data.yaml
 
 
-# ── LoRA Structure (fixed for entire run) ───────────────────────────
+# ── LoRA Structure ──────────────────────────────────────────────────
 
 lora:
   rank: 16
@@ -66,7 +59,7 @@ lora:
 
 optimizer:
   type: adamw8bit
-  learning_rate: 5e-5                            # Unified phase starting LR
+  learning_rate: 5e-5
   weight_decay: 0.01
   betas: [0.9, 0.999]
   eps: 1e-8
@@ -89,7 +82,7 @@ training:
   gradient_checkpointing: true
   seed: 42
 
-  # Unified phase: both experts train together with shared LoRA weights
+  # Wan 2.1 is non-MoE — no expert fork, just unified training
   unified_epochs: 15
   batch_size: 1
   gradient_accumulation_steps: 1
@@ -97,40 +90,21 @@ training:
   # I2V-specific dropout rates
   caption_dropout_rate: 0.15                     # Higher than T2V to rely more on image
   # first_frame_dropout_rate: 0.05              # Uncomment to occasionally drop first frame
+                                                 # Forces model to learn from text alone sometimes
 
   timestep_sampling: shift
   resume_from: null
 
 
-# ── MoE Expert Fork ────────────────────────────────────────────────
-# After unified_epochs, the LoRA splits into per-expert copies.
-# Each expert gets its own learning rate, epoch count, and targets.
-#
-# The boundary_ratio (0.900 for I2V) determines the noise-level split:
-#   - High-noise expert handles timesteps above the boundary
-#   - Low-noise expert handles timesteps below the boundary
-
-moe:
-  enabled: true
-  fork_enabled: true                             # Fork into per-expert LoRAs after unified phase
-  boundary_ratio: null                           # null = model default (0.900 for I2V)
-  preload_experts: false                         # true = keep inactive expert in CPU RAM (~27 GB)
-
-  # High-noise expert: composition, motion, coarse structure
-  high_noise:
-    learning_rate: 1e-4                          # Higher — converges fast on coarse features
-    max_epochs: 30                               # Fewer — done learning earlier
-
-  # Low-noise expert: fine detail, texture, sharpness
-  low_noise:
-    learning_rate: 8e-5                          # Lower — prevents overfitting artifacts
-    max_epochs: 50                               # More — slow, careful refinement
+# ── MoE ─────────────────────────────────────────────────────────────
+# Wan 2.1 is non-MoE — no expert fork. This section is not needed.
+# For MoE training, see examples/training/i2v_wan22.yaml.
 
 
 # ── Checkpoints ─────────────────────────────────────────────────────
 
 save:
-  output_dir: ./output/my_i2v_22
+  output_dir: ./output/my_i2v_21
   name: my_i2v_lora
   save_every_n_epochs: 5
   save_last: true

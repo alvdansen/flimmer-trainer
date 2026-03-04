@@ -1,0 +1,98 @@
+# ══════════════════════════════════════════════════════════════════════
+# Flimmer Project Config — Multi-Phase Dataset Training (Wan 2.1 T2V)
+# ══════════════════════════════════════════════════════════════════════
+#
+# Phase training lets you train on different datasets in sequence,
+# building up the LoRA in stages. Each phase can point to a different
+# data config, use different hyperparameters, or both.
+#
+# This example trains a character LoRA in three phases:
+#
+#   Phase 1: Close-ups (face, expressions)
+#     Start with tight shots so the model locks in facial identity.
+#     Higher learning rate to establish the foundation quickly.
+#
+#   Phase 2: Full-body (motion, posture, outfits)
+#     Expand to wider shots. The model already knows the face,
+#     so it can focus on body language and clothing.
+#     Lower learning rate to avoid overwriting Phase 1.
+#
+#   Phase 3: Mixed (everything together)
+#     Fine-tune on all footage combined. Lowest learning rate.
+#     Cements the connection between close-up and full-body.
+#
+# Why phases instead of one big training run?
+#   - The model learns identity faster from consistent close-ups
+#   - Mixing everything from the start dilutes the signal
+#   - You can checkpoint and evaluate after each phase
+#   - If Phase 2 goes wrong, you can revert to the Phase 1 checkpoint
+#
+# The project system tracks phase status (PENDING -> RUNNING -> COMPLETED)
+# in flimmer_project.json. Re-running the project skips completed phases
+# and picks up where it left off.
+#
+# Usage:
+#   python -m flimmer.project run --project examples/projects/t2v_phases.yaml
+#   python -m flimmer.project status --project examples/projects/t2v_phases.yaml
+#
+# ══════════════════════════════════════════════════════════════════════
+
+
+# ── Project Identity ────────────────────────────────────────────────
+
+name: holly_character
+model_id: wan-2.1-t2v-14b
+
+
+# ── Base Training Config ────────────────────────────────────────────
+# A full training YAML with model paths, lora structure, optimizer,
+# save settings, etc. All phases inherit from this and only override
+# what changes between phases.
+
+base_config: ./holly/flimmer_train.yaml
+
+
+# ── Run-Level Params (locked for entire project) ───────────────────
+# These cannot change between phases. Changing LoRA rank or precision
+# mid-project would invalidate the checkpoint chain.
+
+run_level_params:
+  lora_rank: 16
+  lora_alpha: 16
+  mixed_precision: bf16
+  base_model_precision: bf16
+
+
+# ── Phases (execute in order) ──────────────────────────────────────
+# Each phase can override data_config, learning_rate, max_epochs,
+# and other training parameters. The LoRA checkpoint carries forward
+# from one phase to the next automatically.
+
+phases:
+
+  # Phase 1: Lock in facial identity from close-up footage.
+  # Higher LR to establish the foundation quickly.
+  - type: unified
+    name: "Close-ups"
+    overrides:
+      data_config: ./holly/data_closeups.yaml
+      learning_rate: 5e-5
+      max_epochs: 10
+
+  # Phase 2: Expand to full-body footage.
+  # Lower LR to build on Phase 1 without overwriting it.
+  - type: unified
+    name: "Full Body"
+    overrides:
+      data_config: ./holly/data_fullbody.yaml
+      learning_rate: 3e-5
+      max_epochs: 15
+
+  # Phase 3: Fine-tune on all footage combined.
+  # Lowest LR to cement the connection between all shot types.
+  - type: unified
+    name: "Mixed Fine-tune"
+    overrides:
+      data_config: ./holly/data_all.yaml
+      learning_rate: 1e-5
+      max_epochs: 8

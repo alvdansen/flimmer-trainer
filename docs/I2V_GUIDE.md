@@ -68,7 +68,7 @@ MoE architecture with dual experts (high-noise and low-noise). Supports fork-and
 |---------|------------|-----|---------|
 | `2.2_i2v` | 480p/720p | Yes | 2 (high-noise + low-noise) |
 
-Use `variant: 2.2_i2v`. Supports multi-phase project workflows (see `examples/project_moe.yaml`).
+Use `variant: 2.2_i2v`. Supports multi-phase project workflows (see `examples/projects/i2v_moe_phases.yaml`).
 
 ### Setup Commands
 
@@ -117,9 +117,9 @@ Place custom first frames in the references directory with filenames matching th
 
 Flimmer includes ready-to-use I2V example configs:
 
-- **`examples/i2v_wan21.yaml`** -- Wan 2.1 I2V (non-MoE, single transformer)
-- **`examples/i2v_wan22.yaml`** -- Wan 2.2 I2V (MoE, dual experts with fork-and-specialize)
-- **`examples/project_moe.yaml`** -- Multi-phase project workflow with phase management
+- **`examples/training/i2v_wan21.yaml`** -- Wan 2.1 I2V (non-MoE, single transformer)
+- **`examples/training/i2v_wan22.yaml`** -- Wan 2.2 I2V (MoE, dual experts with fork-and-specialize)
+- **`examples/projects/i2v_moe_phases.yaml`** -- Multi-phase MoE project workflow with phase management
 
 ### Annotated Model Section (Wan 2.2 I2V)
 
