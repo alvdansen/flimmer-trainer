@@ -443,3 +443,113 @@ class TestEnsureCacheDirs:
         cache_dir = tmp_path / "cache"
         ensure_cache_dirs(cache_dir)
         ensure_cache_dirs(cache_dir)  # No error
+
+
+# ---------------------------------------------------------------------------
+# CacheEntry.reference_source_path
+# ---------------------------------------------------------------------------
+
+class TestCacheEntryReferenceSourcePath:
+    """Tests for the reference_source_path field on CacheEntry."""
+
+    def test_reference_source_path_stored(self) -> None:
+        """reference_source_path is stored when provided."""
+        entry = CacheEntry(
+            sample_id="clip_001_81x480x848",
+            source_path="clips/clip_001.mp4",
+            source_stem="clip_001",
+            source_mtime=0,
+            source_size=0,
+            reference_source_path="refs/clip_001.png",
+            reference_file="references/clip_001.safetensors",
+        )
+        assert entry.reference_source_path == "refs/clip_001.png"
+
+    def test_reference_source_path_optional(self) -> None:
+        """reference_source_path defaults to None when not provided."""
+        entry = CacheEntry(
+            sample_id="clip_001_81x480x848",
+            source_path="clips/clip_001.mp4",
+            source_stem="clip_001",
+            source_mtime=0,
+            source_size=0,
+        )
+        assert entry.reference_source_path is None
+
+
+# ---------------------------------------------------------------------------
+# build_cache_manifest: reference_source_path population
+# ---------------------------------------------------------------------------
+
+class TestBuildCacheManifestReference:
+    """Tests for build_cache_manifest populating reference_source_path."""
+
+    def test_populates_reference_source_path(self, tmp_path: Path) -> None:
+        """build_cache_manifest sets reference_source_path from sample.reference."""
+        target = tmp_path / "clip.mp4"
+        target.write_bytes(b"\x00")
+        ref_img = tmp_path / "clip.png"
+        ref_img.write_bytes(b"\x00")
+
+        sample = ExpandedSample(
+            sample_id="clip_81x480x848",
+            source_stem="clip",
+            target=target,
+            target_role=SampleRole.TARGET_VIDEO,
+            reference=ref_img,
+            bucket_width=848,
+            bucket_height=480,
+            bucket_frames=81,
+        )
+
+        manifest = build_cache_manifest([sample], tmp_path)
+        entry = manifest.entries[0]
+        assert entry.reference_source_path == str(ref_img)
+        assert entry.reference_file is not None
+
+    def test_no_reference_source_path_without_reference(self, tmp_path: Path) -> None:
+        """reference_source_path is None when sample has no reference."""
+        target = tmp_path / "clip.mp4"
+        target.write_bytes(b"\x00")
+
+        sample = ExpandedSample(
+            sample_id="clip_81x480x848",
+            source_stem="clip",
+            target=target,
+            target_role=SampleRole.TARGET_VIDEO,
+            bucket_width=848,
+            bucket_height=480,
+            bucket_frames=81,
+        )
+
+        manifest = build_cache_manifest([sample], tmp_path)
+        entry = manifest.entries[0]
+        assert entry.reference_source_path is None
+
+    def test_shared_reference_across_frame_counts(self, tmp_path: Path) -> None:
+        """Same stem gets only one reference file across multiple expansions."""
+        target = tmp_path / "clip.mp4"
+        target.write_bytes(b"\x00")
+        ref_img = tmp_path / "clip.png"
+        ref_img.write_bytes(b"\x00")
+
+        samples = [
+            ExpandedSample(
+                sample_id=f"clip_{fc}x480x848",
+                source_stem="clip",
+                target=target,
+                target_role=SampleRole.TARGET_VIDEO,
+                reference=ref_img,
+                bucket_width=848,
+                bucket_height=480,
+                bucket_frames=fc,
+            )
+            for fc in [17, 33, 81]
+        ]
+
+        manifest = build_cache_manifest(samples, tmp_path)
+
+        # Only first entry should have reference_file and reference_source_path
+        ref_entries = [e for e in manifest.entries if e.reference_file is not None]
+        assert len(ref_entries) == 1
+        assert ref_entries[0].reference_source_path == str(ref_img)
