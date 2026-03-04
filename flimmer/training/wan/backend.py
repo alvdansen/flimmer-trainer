@@ -616,7 +616,7 @@ class WanModelBackend:
     def _build_i2v_hidden_states(
         self,
         noisy_latents: Any,
-        reference: Any,
+        reference: Any | None,
     ) -> Any:
         """Build 36-channel I2V hidden states from noisy latents + reference.
 
@@ -624,6 +624,10 @@ class WanModelBackend:
         The reference is pre-encoded as [B, 16, 1, H, W] (single frame).
         We expand it temporally and add mask channels to match the model's
         expected input format (matching diffusers/musubi-tuner convention).
+
+        When reference is None (sample has no first-frame image), both
+        mask and reference channels are all zeros — equivalent to 100%
+        first_frame_dropout. The model still receives 36 channels.
 
         The 4 mask channels indicate reference presence per latent frame.
         All 4 channels are 1.0 for the first latent frame (which contains
@@ -636,16 +640,17 @@ class WanModelBackend:
         device = noisy_latents.device
         dtype = noisy_latents.dtype
 
-        # Expand reference: [B, 16, 1, H, W] → [B, 16, F, H, W]
-        # First latent frame = reference, rest = zeros
+        # Reference: [B, 16, F, H, W] — first frame = reference, rest = zeros
         ref_expanded = torch.zeros(B, C, F, H, W, device=device, dtype=dtype)
-        ref_expanded[:, :, :reference.shape[2]] = reference.to(
-            device=device, dtype=dtype,
-        )
 
-        # Mask: [B, 4, F, H, W] — all 1s at frame 0, all 0s elsewhere
+        # Mask: [B, 4, F, H, W] — all zeros when no reference
         mask = torch.zeros(B, 4, F, H, W, device=device, dtype=dtype)
-        mask[:, :, 0] = 1.0
+
+        if reference is not None:
+            ref_expanded[:, :, :reference.shape[2]] = reference.to(
+                device=device, dtype=dtype,
+            )
+            mask[:, :, 0] = 1.0
 
         # Concatenate: noisy(16) + mask(4) + reference(16) = 36
         return torch.cat([noisy_latents, mask, ref_expanded], dim=1)
@@ -681,12 +686,11 @@ class WanModelBackend:
         # Hidden states: the noisy latents (or concatenated with reference for I2V)
         hidden_states = noisy_latents
 
-        if self._is_i2v and batch.get("reference") is not None:
-            reference = batch["reference"]
-            if reference is not None:
-                hidden_states = self._build_i2v_hidden_states(
-                    noisy_latents, reference,
-                )
+        if self._is_i2v:
+            reference = batch.get("reference")
+            hidden_states = self._build_i2v_hidden_states(
+                noisy_latents, reference,
+            )
 
         inputs["hidden_states"] = hidden_states
 

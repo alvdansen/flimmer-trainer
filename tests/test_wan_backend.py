@@ -494,8 +494,8 @@ class TestPrepareModelInputs:
         assert hs[0, 16, 0, 0, 0].item() == 1.0  # mask at frame 0
         assert hs[0, 16, 1, 0, 0].item() == 0.0  # mask at frame 1
 
-    def test_i2v_no_reference_uses_noisy_only(self):
-        """I2V backend with reference=None must fall back to noisy latents alone."""
+    def test_i2v_no_reference_zero_fills(self):
+        """I2V backend with reference=None must zero-fill to 36 channels."""
         torch = pytest.importorskip("torch")
         backend = _make_i2v_backend(is_i2v=True)
 
@@ -505,8 +505,11 @@ class TestPrepareModelInputs:
 
         inputs = backend.prepare_model_inputs(batch, torch.tensor([0.5]), noisy_latents)
 
-        # No concatenation — channel count stays at C
-        assert inputs["hidden_states"].shape[1] == C
+        # Still 36 channels — mask and reference are zero-filled
+        assert inputs["hidden_states"].shape[1] == 36
+        # Mask and reference channels should all be zero
+        mask_and_ref = inputs["hidden_states"][:, C:]
+        assert (mask_and_ref == 0).all()
 
     def test_21_i2v_concatenates_reference(self):
         """Wan 2.1 I2V also builds 36-channel input from raw reference."""
