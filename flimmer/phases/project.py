@@ -29,7 +29,7 @@ from .registry import get_model_definition
 if TYPE_CHECKING:
     from .validation import ValidationResult
 
-PROJECT_FILENAME = "dimljus_project.json"
+PROJECT_FILENAME = "flimmer_project.json"
 
 
 class PhaseStatus(str, Enum):
@@ -118,7 +118,7 @@ class Project(BaseModel):
 
     @classmethod
     def load(cls, directory: Path) -> Project:
-        """Load a project from a directory containing dimljus_project.json.
+        """Load a project from a directory containing flimmer_project.json.
 
         Args:
             directory: Path to the directory with the project file.
@@ -134,7 +134,7 @@ class Project(BaseModel):
     # ---- Persistence ----
 
     def save(self, directory: Path) -> None:
-        """Save the project to directory/dimljus_project.json.
+        """Save the project to directory/flimmer_project.json.
 
         Creates the directory if it doesn't exist.
 

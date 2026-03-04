@@ -1,13 +1,13 @@
-"""Custom exception hierarchy for dimljus_phases."""
+"""Custom exception hierarchy for flimmer.phases."""
 
 from __future__ import annotations
 
 
-class DimljusPhasesError(Exception):
-    """Base exception for all dimljus_phases errors."""
+class FlimmerPhasesError(Exception):
+    """Base exception for all flimmer.phases errors."""
 
 
-class ModelNotFoundError(DimljusPhasesError):
+class ModelNotFoundError(FlimmerPhasesError):
     """Raised when a model ID is not found in the registry.
 
     Attributes:
@@ -24,7 +24,7 @@ class ModelNotFoundError(DimljusPhasesError):
         )
 
 
-class PhaseConfigError(DimljusPhasesError):
+class PhaseConfigError(FlimmerPhasesError):
     """Raised when a phase configuration is invalid.
 
     Attributes:

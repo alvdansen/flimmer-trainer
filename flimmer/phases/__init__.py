@@ -1,4 +1,4 @@
-"""dimljus_phases: Model-agnostic, registry-driven phase configuration."""
+"""flimmer.phases: Model-agnostic, registry-driven phase configuration."""
 
 from .definitions import (
     ModelDefinition,
@@ -6,7 +6,7 @@ from .definitions import (
     PhaseTypeDeclaration,
     SignalDeclaration,
 )
-from .errors import DimljusPhasesError, ModelNotFoundError, PhaseConfigError
+from .errors import FlimmerPhasesError, ModelNotFoundError, PhaseConfigError
 from .phase_model import PhaseConfig, ResolvedPhase
 from .registry import (
     MODEL_REGISTRY,
@@ -27,7 +27,7 @@ __all__ = [
     "SignalDeclaration",
     "PhaseTypeDeclaration",
     "ModelDefinition",
-    "DimljusPhasesError",
+    "FlimmerPhasesError",
     "ModelNotFoundError",
     "PhaseConfigError",
     "PhaseConfig",
@@ -48,3 +48,26 @@ __all__ = [
     "template_moe_standard",
     "template_wan21_finetune",
 ]
+
+import logging
+
+_logger = logging.getLogger(__name__)
+
+
+def _check_registry_sync() -> None:
+    """Warn if MODEL_REGISTRY model_ids don't all have WAN_VARIANTS entries."""
+    try:
+        from flimmer.training.wan.registry import WAN_VARIANTS
+    except ImportError:
+        return  # training extras not installed
+    for model_id, defn in MODEL_REGISTRY.items():
+        if defn.variant not in WAN_VARIANTS:
+            _logger.warning(
+                "Model '%s' registered in phases but no WAN_VARIANTS entry "
+                "for variant '%s'. Implement a backend in "
+                "flimmer/training/ for this model.",
+                model_id, defn.variant,
+            )
+
+
+_check_registry_sync()

@@ -1,7 +1,7 @@
-"""YAML config export: serialize resolved phases to dimljus trainer format.
+"""YAML config export: serialize resolved phases to flimmer trainer format.
 
 Converts a Project's resolved phases into the nested YAML structure expected
-by the dimljus trainer config loader. Handles MoE vs non-MoE branching,
+by the flimmer trainer config loader. Handles MoE vs non-MoE branching,
 conditional signals block, and clean float formatting.
 
 Public API:
@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 # Custom YAML Dumper with readable float formatting
 # ---------------------------------------------------------------------------
 
-class _DimljusDumper(yaml.SafeDumper):
+class _FlimmerDumper(yaml.SafeDumper):
     """Custom YAML dumper with human-readable float representation.
 
     Subclasses SafeDumper to avoid mutating the global SafeDumper state,
@@ -45,7 +45,7 @@ class _DimljusDumper(yaml.SafeDumper):
 _SCIENTIFIC_FLOAT_RE = re.compile(
     r"^[-+]?(?:\d+\.?\d*|\.\d+)[eE][-+]?\d+$"
 )
-_DimljusDumper.add_implicit_resolver(
+_FlimmerDumper.add_implicit_resolver(
     "tag:yaml.org,2002:float",
     _SCIENTIFIC_FLOAT_RE,
     list("-+0123456789."),
@@ -87,11 +87,11 @@ def _float_representer(dumper: yaml.Dumper, value: float) -> yaml.ScalarNode:
     return dumper.represent_scalar("tag:yaml.org,2002:float", formatted)
 
 
-_DimljusDumper.add_representer(float, _float_representer)
+_FlimmerDumper.add_representer(float, _float_representer)
 
 
 # ---------------------------------------------------------------------------
-# Internal: build the dimljus config dict from resolved phases
+# Internal: build the flimmer config dict from resolved phases
 # ---------------------------------------------------------------------------
 
 # Params that map with a different key name in the YAML output
@@ -152,12 +152,12 @@ def _build_expert_overrides(
     return overrides
 
 
-def _resolved_to_dimljus_dict(
+def _resolved_to_flimmer_dict(
     project: Project,
     resolved_phases: list[ResolvedPhase],
     model_def: ModelDefinition,
 ) -> dict:
-    """Map resolved phases to the dimljus trainer config dict structure.
+    """Map resolved phases to the flimmer trainer config dict structure.
 
     Args:
         project: The source project.
@@ -165,7 +165,7 @@ def _resolved_to_dimljus_dict(
         model_def: The model definition from registry.
 
     Returns:
-        A dict matching the dimljus YAML config structure.
+        A dict matching the flimmer YAML config structure.
     """
     config: dict = {}
 
@@ -274,10 +274,10 @@ def _resolved_to_dimljus_dict(
 # ---------------------------------------------------------------------------
 
 def export_yaml(project: Project, output_path: Path) -> Path:
-    """Export a project to a dimljus-compatible YAML config file.
+    """Export a project to a flimmer-compatible YAML config file.
 
     Resolves each enabled phase via resolve_phase(), maps the results
-    to the dimljus trainer config structure, and writes to output_path.
+    to the flimmer trainer config structure, and writes to output_path.
 
     Args:
         project: The project to export.
@@ -303,8 +303,8 @@ def export_yaml(project: Project, output_path: Path) -> Path:
             )
             resolved_phases.append(resolved)
 
-    # Build the dimljus config dict
-    config_dict = _resolved_to_dimljus_dict(project, resolved_phases, model_def)
+    # Build the flimmer config dict
+    config_dict = _resolved_to_flimmer_dict(project, resolved_phases, model_def)
 
     # Write YAML with custom float formatting
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -312,7 +312,7 @@ def export_yaml(project: Project, output_path: Path) -> Path:
         yaml.dump(
             config_dict,
             f,
-            Dumper=_DimljusDumper,
+            Dumper=_FlimmerDumper,
             default_flow_style=False,
             sort_keys=False,
         )

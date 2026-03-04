@@ -6,7 +6,7 @@ overrides against base parameter values to produce a fully-specified
 ResolvedPhase.
 
 The core resolution uses the proven _resolve(override, base) idiom
-from dimljus-kit: override if not None, else base value.
+from flimmer: override if not None, else base value.
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ def _resolve(
 ) -> float | int | str | bool | None:
     """Use override if not None, else base value.
 
-    This is the proven pattern from dimljus-kit for merging
+    This is the proven pattern from flimmer for merging
     per-phase overrides with base/default values.
     """
     return override_val if override_val is not None else base_val

@@ -1,6 +1,6 @@
 """Model registry: stores and retrieves ModelDefinition instances by model_id.
 
-Follows the proven WAN_VARIANTS plain-dict pattern from dimljus-kit,
+Follows the proven WAN_VARIANTS plain-dict pattern from flimmer,
 upgraded to typed Pydantic values.
 """
 
