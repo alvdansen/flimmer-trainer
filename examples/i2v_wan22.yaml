@@ -1,0 +1,156 @@
+# ══════════════════════════════════════════════════════════════════════
+# Flimmer I2V Training Config — Wan 2.2 (MoE)
+# ══════════════════════════════════════════════════════════════════════
+#
+# Image-to-Video training with Wan 2.2 14B MoE (Mixture of Experts).
+#
+# Wan 2.2 uses two expert DiTs that specialize on different noise levels:
+#   - High-noise expert: composition, motion, coarse structure
+#   - Low-noise expert: fine detail, texture, sharpness
+#
+# Recommended workflow (fork-and-specialize):
+#   1. Unified phase: train both experts together (shared LoRA weights)
+#   2. Expert fork: split into per-expert LoRAs with tuned hyperparameters
+#
+# I2V key differences from T2V:
+#   - in_channels: 36 (16 video + 20 reference image latents)
+#   - boundary_ratio: 0.900 (I2V default, vs 0.500 for T2V)
+#   - First frame is VAE-encoded and concatenated to video latents
+#   - caption_dropout_rate: 0.15 (higher to strengthen image conditioning)
+#
+# Setup:
+#   bash scripts/setup.sh --variant 2.2_i2v
+#
+# Usage:
+#   python -m flimmer.training train --config examples/i2v_wan22.yaml
+#
+# For multi-phase project management, see examples/project_moe.yaml.
+#
+# ══════════════════════════════════════════════════════════════════════
+
+
+# ── Model & Data ─────────────────────────────────────────────────────
+
+model:
+  variant: 2.2_i2v                               # MoE I2V model
+
+  # Two expert DiT files (MoE = separate high/low noise transformers)
+  dit_high: ./models/wan2.2_i2v_high_noise_14B_fp16.safetensors
+  dit_low: ./models/wan2.2_i2v_low_noise_14B_fp16.safetensors
+
+  # Shared components (same across all Wan models)
+  vae: ./models/wan_2.1_vae.safetensors
+  t5: ./models/umt5_xxl_fp16.safetensors
+
+  # Architecture auto-fills from variant. These are the I2V MoE defaults:
+  # is_moe: true
+  # in_channels: 36                              # 16 video + 20 reference image
+  # boundary_ratio: 0.900                        # I2V noise boundary (higher than T2V 0.500)
+  # flow_shift: 3.0
+
+# Point to your dataset's data config
+data_config: ./your_dataset/flimmer_data.yaml
+
+
+# ── LoRA Structure (fixed for entire run) ───────────────────────────
+
+lora:
+  rank: 16
+  alpha: 16                                      # alpha/rank = 1.0x scaling
+  loraplus_lr_ratio: 4.0
+  dropout: 0.05
+  target_modules: null                           # null = all standard targets
+
+
+# ── Optimizer ───────────────────────────────────────────────────────
+
+optimizer:
+  type: adamw8bit
+  learning_rate: 5e-5                            # Unified phase starting LR
+  weight_decay: 0.01
+  betas: [0.9, 0.999]
+  eps: 1e-8
+  max_grad_norm: 1.0
+
+
+# ── Scheduler ───────────────────────────────────────────────────────
+
+scheduler:
+  type: cosine_with_min_lr
+  warmup_steps: 0
+  min_lr_ratio: 0.01
+
+
+# ── Training ────────────────────────────────────────────────────────
+
+training:
+  mixed_precision: bf16
+  base_model_precision: bf16
+  gradient_checkpointing: true
+  seed: 42
+
+  # Unified phase: both experts train together with shared LoRA weights
+  unified_epochs: 15
+  batch_size: 1
+  gradient_accumulation_steps: 1
+
+  # I2V-specific dropout rates
+  caption_dropout_rate: 0.15                     # Higher than T2V to rely more on image
+  # first_frame_dropout_rate: 0.05              # Uncomment to occasionally drop reference image
+
+  timestep_sampling: shift
+  resume_from: null
+
+
+# ── MoE Expert Fork ────────────────────────────────────────────────
+# After unified_epochs, the LoRA splits into per-expert copies.
+# Each expert gets its own learning rate, epoch count, and targets.
+#
+# The boundary_ratio (0.900 for I2V) determines the noise-level split:
+#   - High-noise expert handles timesteps above the boundary
+#   - Low-noise expert handles timesteps below the boundary
+
+moe:
+  enabled: true
+  fork_enabled: true                             # Fork into per-expert LoRAs after unified phase
+  boundary_ratio: null                           # null = model default (0.900 for I2V)
+  preload_experts: false                         # true = keep inactive expert in CPU RAM (~27 GB)
+
+  # High-noise expert: composition, motion, coarse structure
+  high_noise:
+    learning_rate: 1e-4                          # Higher — converges fast on coarse features
+    max_epochs: 30                               # Fewer — done learning earlier
+
+  # Low-noise expert: fine detail, texture, sharpness
+  low_noise:
+    learning_rate: 8e-5                          # Lower — prevents overfitting artifacts
+    max_epochs: 50                               # More — slow, careful refinement
+
+
+# ── Checkpoints ─────────────────────────────────────────────────────
+
+save:
+  output_dir: ./output/my_i2v_22
+  name: my_i2v_lora
+  save_every_n_epochs: 5
+  save_last: true
+  format: safetensors
+
+
+# ── Logging ─────────────────────────────────────────────────────────
+
+logging:
+  backends: [console]                            # Add "wandb" for W&B tracking
+  log_every_n_steps: 10
+
+
+# ── Sampling ────────────────────────────────────────────────────────
+
+sampling:
+  enabled: false                                 # Enable to generate sample videos during training
+  every_n_epochs: 5
+  prompts:
+    - "A person walks through a sunlit garden"
+  seed: 42
+  sample_steps: 25
+  guidance_scale: 4.0

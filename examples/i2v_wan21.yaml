@@ -1,0 +1,130 @@
+# ══════════════════════════════════════════════════════════════════════
+# Flimmer I2V Training Config — Wan 2.1 (Non-MoE)
+# ══════════════════════════════════════════════════════════════════════
+#
+# Image-to-Video training with Wan 2.1 14B. This is a non-MoE model,
+# so there is no expert fork — training runs as a single unified phase.
+#
+# Simpler than Wan 2.2 MoE: one DiT file, no expert splitting, no
+# boundary_ratio tuning. Good starting point for I2V LoRA training.
+#
+# I2V key differences from T2V:
+#   - in_channels: 36 (16 video + 20 reference image latents)
+#   - First frame is encoded by the VAE and concatenated to video latents
+#   - caption_dropout_rate: 0.15 (higher than T2V to strengthen image conditioning)
+#   - first_frame_dropout_rate: available to reduce reference image reliance
+#
+# Setup:
+#   bash scripts/setup.sh --variant 2.1_i2v_480p
+#
+# Usage:
+#   python -m flimmer.training train --config examples/i2v_wan21.yaml
+#
+# ══════════════════════════════════════════════════════════════════════
+
+
+# ── Model & Data ─────────────────────────────────────────────────────
+
+model:
+  variant: 2.1_i2v                               # Non-MoE I2V model
+
+  # Single DiT file (non-MoE = one unified transformer)
+  # For 720p, replace with: ./models/wan2.1_i2v_720p_14B_fp16.safetensors
+  dit: ./models/wan2.1_i2v_480p_14B_fp16.safetensors
+
+  # Shared components (same across all Wan models)
+  vae: ./models/wan_2.1_vae.safetensors
+  t5: ./models/umt5_xxl_fp16.safetensors
+
+  # Architecture auto-fills from variant. These are the I2V defaults:
+  # is_moe: false                                # No expert routing
+  # in_channels: 36                              # 16 video + 20 reference image
+  # flow_shift: 3.0
+
+# Point to your dataset's data config
+data_config: ./your_dataset/flimmer_data.yaml
+
+
+# ── LoRA Structure ──────────────────────────────────────────────────
+
+lora:
+  rank: 16
+  alpha: 16                                      # alpha/rank = 1.0x scaling
+  loraplus_lr_ratio: 4.0
+  dropout: 0.05
+  target_modules: null                           # null = all standard targets
+
+
+# ── Optimizer ───────────────────────────────────────────────────────
+
+optimizer:
+  type: adamw8bit
+  learning_rate: 5e-5
+  weight_decay: 0.01
+  betas: [0.9, 0.999]
+  eps: 1e-8
+  max_grad_norm: 1.0
+
+
+# ── Scheduler ───────────────────────────────────────────────────────
+
+scheduler:
+  type: cosine_with_min_lr
+  warmup_steps: 0
+  min_lr_ratio: 0.01
+
+
+# ── Training ────────────────────────────────────────────────────────
+
+training:
+  mixed_precision: bf16
+  base_model_precision: bf16
+  gradient_checkpointing: true
+  seed: 42
+
+  # Wan 2.1 is non-MoE — no expert fork, just unified training
+  unified_epochs: 15
+  batch_size: 1
+  gradient_accumulation_steps: 1
+
+  # I2V-specific dropout rates
+  caption_dropout_rate: 0.15                     # Higher than T2V to rely more on image
+  # first_frame_dropout_rate: 0.05              # Uncomment to occasionally drop reference image
+                                                 # Forces model to learn from text alone sometimes
+
+  timestep_sampling: shift
+  resume_from: null
+
+
+# ── MoE ─────────────────────────────────────────────────────────────
+# Wan 2.1 is non-MoE — no expert fork. This section is not needed.
+# For MoE training, see examples/i2v_wan22.yaml.
+
+
+# ── Checkpoints ─────────────────────────────────────────────────────
+
+save:
+  output_dir: ./output/my_i2v_21
+  name: my_i2v_lora
+  save_every_n_epochs: 5
+  save_last: true
+  format: safetensors
+
+
+# ── Logging ─────────────────────────────────────────────────────────
+
+logging:
+  backends: [console]                            # Add "wandb" for W&B tracking
+  log_every_n_steps: 10
+
+
+# ── Sampling ────────────────────────────────────────────────────────
+
+sampling:
+  enabled: false                                 # Enable to generate sample videos during training
+  every_n_epochs: 5
+  prompts:
+    - "A person walks through a sunlit garden"
+  seed: 42
+  sample_steps: 25
+  guidance_scale: 4.0
