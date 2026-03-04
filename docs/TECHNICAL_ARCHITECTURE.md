@@ -82,13 +82,6 @@ Video models are enormous. Wan 2.2 I2V is 14B active parameters. Training requir
 
 **Resolution buckets**: Like image training, video training benefits from bucketing — grouping clips by resolution to minimize padding waste. But video adds the temporal dimension, so buckets are 3D (width x height x frames).
 
-## Limitations in the Current Finetuning Ecosystem
-
-The tools available today for video LoRA training are excellent at what they were built for — image generation finetuning — and they've been extended to support video. But there are gaps in how video training is handled that affect practical workflows.
-
-### Video as an extension of image training
-Current finetuning frameworks were designed around image generation. Video support was added later, which means the dataset pipeline tends to treat clips as sequences of frames rather than temporally coherent video. Things like temporal validation (is there a scene cut in this clip?), frame rate consistency, and duration awareness aren't typically built into the data preparation layer. You need to handle those yourself before your data reaches the trainer.
-
 ### Conditioning treated as an afterthought
 In most training setups, captions are treated as a metadata file — something you add because the training script expects a `.txt` next to your `.mp4`. But captions are actually a conditioning signal that teaches the model what to associate with the visual content. Thinking of them as an input signal with its own quality requirements (rather than just a sidecar file) changes how you approach dataset preparation and how much weight you give to caption quality, structure, and consistency.
 
