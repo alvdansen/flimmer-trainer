@@ -190,7 +190,7 @@ if not torch.cuda.is_available():
 print(f'PyTorch {torch.__version__} with CUDA {torch.version.cuda}')
 for i in range(torch.cuda.device_count()):
     props = torch.cuda.get_device_properties(i)
-    vram_gb = props.total_mem / (1024**3)
+    vram_gb = props.total_memory / (1024**3)
     print(f'  GPU {i}: {props.name} ({vram_gb:.1f} GB VRAM)')
     if vram_gb < 20:
         print(f'    WARNING: {vram_gb:.1f} GB may be insufficient for 14B models.')
