@@ -171,6 +171,16 @@ def get_wan_backend(config: Any) -> Any:
 
     info = get_variant_info(variant)
 
+    # Resolve HF config repo for from_single_file() loading.
+    # Uses the resolution subtype from training config, falling back
+    # to the variant's default_subtype.
+    config_repo = None
+    if "subtypes" in info:
+        resolution = getattr(config.model, "resolution", None)
+        subtype_key = resolution or info.get("default_subtype", "480p")
+        subtype = info["subtypes"].get(subtype_key, {})
+        config_repo = subtype.get("hf_repo")
+
     # Allow config to override variant defaults
     boundary_ratio = info["boundary_ratio"]
     if config.model.boundary_ratio is not None:
@@ -210,4 +220,5 @@ def get_wan_backend(config: Any) -> Any:
         dit_high_path=dit_high_path,
         dit_low_path=dit_low_path,
         preload_experts=preload_experts,
+        config_repo=config_repo,
     )

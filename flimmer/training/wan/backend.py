@@ -79,6 +79,10 @@ class WanModelBackend:
         preload_experts: If True, load both expert state dicts to CPU at
             startup for fast switching. If False (default), reload from
             disk each time.
+        config_repo: HuggingFace config repo ID for from_single_file()
+            loading. Required for correct architecture detection when
+            using single-file weights. Resolved from the variant registry
+            by the factory (get_wan_backend).
     """
 
     def __init__(
@@ -97,6 +101,7 @@ class WanModelBackend:
         dit_high_path: str | None = None,
         dit_low_path: str | None = None,
         preload_experts: bool = False,
+        config_repo: str | None = None,
     ) -> None:
         self._model_id = model_id
         self._model_path = model_path
@@ -114,6 +119,9 @@ class WanModelBackend:
         self._dit_path = dit_path
         self._dit_high_path = dit_high_path
         self._dit_low_path = dit_low_path
+
+        # HuggingFace config repo for from_single_file() architecture detection
+        self._config_repo = config_repo
 
         # Expert switching mode
         self._preload_experts = preload_experts
@@ -197,18 +205,24 @@ class WanModelBackend:
             # Load to CPU first, then the caller moves to GPU. This avoids
             # competing with any leftover VRAM from a previous model.
             #
-            # CRITICAL: config= and subfolder= are required for Wan 2.2.
-            # Without them, from_single_file() silently loads Wan 2.1 config
-            # instead of Wan 2.2 (diffusers#12329) because the transformer
-            # weight shapes are identical between versions. This causes the
-            # model to produce noise/garbage output.
+            # CRITICAL: config= and subfolder= are required for correct
+            # architecture detection. Without them, from_single_file()
+            # auto-detects the wrong config because Wan transformer weight
+            # shapes are identical across versions (diffusers#12329).
+            # The config repo is resolved from the variant registry via
+            # _resolve_config_repo(), ensuring each variant (2.1 T2V,
+            # 2.2 I2V, etc.) loads its correct architecture config.
             subfolder = self._resolve_config_subfolder(expert)
+            config_repo = self._resolve_config_repo()
+            if config_repo is None:
+                # Fallback for backwards compatibility -- matches original behavior
+                config_repo = "Wan-AI/Wan2.2-T2V-A14B-Diffusers"
             try:
                 model = WanTransformer3DModel.from_single_file(
                     single_file,
                     torch_dtype=dtype,
                     device="cpu",
-                    config="Wan-AI/Wan2.2-T2V-A14B-Diffusers",
+                    config=config_repo,
                     subfolder=subfolder,
                 )
             except Exception as e:
@@ -437,6 +451,20 @@ class WanModelBackend:
         new_model = self.load_model(config, expert=new_expert)
         print(f"  Expert switch complete.")
         return new_model
+
+    def _resolve_config_repo(self) -> str | None:
+        """Determine the correct HF config repo for from_single_file() loading.
+
+        When using from_single_file(), diffusers needs config= pointing to
+        the correct HF repo so it reads the right config.json. Without this,
+        a Wan 2.1 model loaded with Wan 2.2 config (or vice versa) produces
+        silent garbage output.
+
+        Returns:
+            HF repo ID string, or None if not configured (will use
+            from_pretrained() fallback which doesn't need this).
+        """
+        return self._config_repo
 
     def _resolve_config_subfolder(self, expert: str | None) -> str:
         """Determine the correct config subfolder for from_single_file().
