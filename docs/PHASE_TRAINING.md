@@ -8,6 +8,8 @@ Phase training breaks that into stages. Each stage (phase) trains the same LoRA 
 
 Think of it like painting. You don't try to paint the whole picture in one pass. You block in the composition first, then add detail, then refine. Each pass builds on the last one.
 
+This approach was pioneered for Stable Diffusion training by [TheLastBen](https://github.com/TheLastBen) in [fast-stable-diffusion](https://github.com/TheLastBen/fast-stable-diffusion). Flimmer adapts the concept for video diffusion models with native support for Wan 2.2's MoE expert architecture.
+
 ## When to Use Phases
 
 **You don't always need phases.** If you have one dataset and one set of hyperparameters, a single training config is simpler and works fine.
