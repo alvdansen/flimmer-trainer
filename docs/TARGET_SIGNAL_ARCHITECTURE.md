@@ -1,15 +1,15 @@
-# Control Signal Architecture
+# Target & Signal Architecture
 
 > Last updated: 2026-02-22 (v2 — added image input taxonomy)
 > Status: Design phase — not yet implemented
 
-This document defines Flimmer's core architectural innovation: treating every training input as a registered control signal with a uniform interface.
+This document defines Flimmer's core architectural innovation: treating every training data that operates as an 'input' as a registered control signal with a uniform interface.
 
 ## The Core Insight
 
-In video diffusion models, there is a fundamental distinction between:
+In image and video diffusion models, there is a fundamental distinction between:
 - **Targets**: What the model learns to PRODUCE (denoised video)
-- **Controls**: What the model learns to OBEY (text captions, reference images, depth maps, etc.)
+- **Signals**: What the model learns to OBEY (text captions, reference images, depth maps, etc.)
 
 Existing trainers blur this distinction. Flimmer makes it explicit and architectural.
 
@@ -17,7 +17,7 @@ Existing trainers blur this distinction. Flimmer makes it explicit and architect
 
 A common simplification in training tools is treating image inputs as a monolithic category — "the reference image." In practice, users bring many kinds of images into training, each with a fundamentally different ROLE:
 
-### I2V Reference Image
+### I2V First Frame Image
 - **What it is**: A frame extracted from or closely matching the video clip (usually first frame)
 - **What it tells the model**: "Generate video that starts from this exact visual state"
 - **How it's used**: VAE-encoded and channel-concatenated with noisy latents
@@ -26,7 +26,7 @@ A common simplification in training tools is treating image inputs as a monolith
 ### Subject Reference
 - **What it is**: A character sheet, product photo, face crop, or other depiction of a specific subject
 - **What it tells the model**: "This is what the subject looks like — learn its identity"
-- **How it's used**: Depends on training approach — IP adapter embedding, textual inversion, or subject LoRA conditioning
+- **How it's used**: Depends on training approach — IP adapter embedding, textual inversion, or subject LoRA conditioning and whether or not the foundational model supports it.
 - **Typical source**: User-provided (drawn, photographed, or composited)
 
 ### Style Reference
@@ -40,12 +40,6 @@ A common simplification in training tools is treating image inputs as a monolith
 - **What it tells the model**: "Follow this spatial structure"
 - **How it's used**: Channel concatenation (Flux-tools style) or context blocks (VACE style)
 - **Typical source**: Computed from video clips using estimation models (MiDaS for depth, Canny for edges, etc.) or rendered from 3D scenes
-
-### Brand / Asset Image
-- **What it is**: A logo, UI element, graphic overlay, or other specific visual asset
-- **What it tells the model**: "Incorporate this element into the output"
-- **How it's used**: Varies — may be composited into training data or used as a conditioning signal
-- **Typical source**: Client-provided assets
 
 ### Why This Taxonomy Matters
 The organizational structure itself is pedagogical. When a user sets up a Flimmer dataset and must classify their images by role, they are forced to think explicitly about what each piece of training data MEANS. This prevents the common failure mode of dumping all images into one folder and hoping the trainer figures it out.
@@ -71,31 +65,18 @@ Each subdirectory has its own validation rules, encoding pathway, and injection 
 Single control signal:
 - **Text caption** → T5 encoder → cross-attention into transformer blocks
 
-### Wan 2.2 I2V (Image-to-Video)
+### Wan 2.1/2.2 I2V (Image-to-Video)
 Two control signals:
 - **Text caption** → T5 encoder → cross-attention into transformer blocks
 - **Reference image** → VAE encoder → latent concatenation with noisy video latents (extra channels in the channel dimension)
 
-The reference image is NOT part of the target. It's a conditioning signal that tells the model "make video that looks like this." This is architecturally identical to how ControlNet-style signals work.
-
-### VACE (Wan's Control Framework)
-Multiple control signals through a separate pathway:
-- **Context blocks**: Dedicated transformer blocks that process control signals (depth, edge, pose, etc.)
-- **Context tokens**: Control signal representations that are injected into the main transformer via cross-attention
-- Each control type occupies its own "slot" in the context block architecture
-- This is why VACE generalizes well to new control types — the infrastructure exists
-
-### Flux-tools Control LoRA Approach
-- Control signals (depth, edge) are channel-concatenated with the input
-- A LoRA teaches the model to interpret these extra channels as structural guidance
-- spacepxl's depth control LoRA for Flux is the reference implementation
-- This approach works because Flux already has I2V-style channel concatenation machinery
+The reference image is NOT part of the target. It's a conditioning signal that tells the model "make video that looks like this." This is architecturally identical to how ControlNet-style signals work. The only situation where a single still image can be considered a target is when it represents a still frame, in a video training paradigm. We just think it's useful to frame that as a "target" and to understand that you are training the model to interpret the text signal as the target still, in such a case.
 
 ## Signal Types and Their Properties
 
 Each control signal has these attributes:
 
-| Attribute | Reference Image (I2V) | Subject Reference | Style Reference | Text Caption | Depth Map |
+| Attribute | First Frame Image (I2V) | Subject Reference | Style Reference | Text Caption | Control Signal (Depth Map, Etc) |
 |---|---|---|---|---|---|
 | **Name** | `reference_image` | `subject_image` | `style_image` | `caption` | `depth_map` |
 | **Data type** | Image (PNG/JPG) | Image (PNG/JPG) | Image (PNG/JPG) | Text string | Image/Tensor |
