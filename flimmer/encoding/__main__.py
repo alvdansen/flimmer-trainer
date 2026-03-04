@@ -27,6 +27,41 @@ from pathlib import Path
 
 
 # ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _get_dataset_dirs(data_config_path: str | Path) -> list[Path]:
+    """Get the actual dataset directories from a data config.
+
+    Loads the data config and returns the resolved paths from the
+    datasets[].path entries. Falls back to the data config file's
+    parent directory if loading fails.
+    """
+    data_config_path = Path(data_config_path)
+    try:
+        from flimmer.config.loader import load_data_config
+        data_config = load_data_config(data_config_path)
+        return [Path(ds.path) for ds in data_config.datasets]
+    except Exception:
+        # Fallback: use the data config file's parent directory
+        if data_config_path.is_file():
+            return [data_config_path.parent]
+        return [data_config_path]
+
+
+def _discover_from_config(data_config_path: str | Path, probe: bool = True):
+    """Discover samples from all dataset directories in a data config."""
+    from flimmer.encoding.discover import discover_samples
+
+    dataset_dirs = _get_dataset_dirs(data_config_path)
+    all_samples = []
+    for dataset_dir in dataset_dirs:
+        samples = discover_samples(str(dataset_dir), probe=probe)
+        all_samples.extend(samples)
+    return all_samples, dataset_dirs
+
+
+# ---------------------------------------------------------------------------
 # Info command
 # ---------------------------------------------------------------------------
 
@@ -43,29 +78,19 @@ def cmd_info(args: argparse.Namespace) -> None:
         find_stale_entries,
         load_cache_manifest,
     )
-    from flimmer.encoding.discover import discover_samples
     from flimmer.encoding.expand import expand_samples
     from flimmer.encoding.bucket import bucket_groups
 
     config = load_training_config(args.config)
 
-    # Resolve dataset directory from data_config
-    data_config_path = Path(config.data_config)
-    if data_config_path.is_file():
-        dataset_dir = data_config_path.parent
-    else:
-        dataset_dir = data_config_path
+    samples, dataset_dirs = _discover_from_config(config.data_config)
 
     print(f"Training config: {args.config}")
-    print(f"Dataset: {dataset_dir}")
+    for d in dataset_dirs:
+        print(f"Dataset: {d}")
     print(f"Cache dir: {config.cache.cache_dir}")
     print()
 
-    # Discover
-    samples = discover_samples(
-        str(dataset_dir),
-        probe=True,
-    )
     print(f"Discovered: {len(samples)} source samples")
 
     if not samples:
@@ -130,16 +155,9 @@ def cmd_cache_latents(args: argparse.Namespace) -> None:
         ensure_cache_dirs,
         save_cache_manifest,
     )
-    from flimmer.encoding.discover import discover_samples
     from flimmer.encoding.expand import expand_samples
 
     config = load_training_config(args.config)
-
-    data_config_path = Path(config.data_config)
-    if data_config_path.is_file():
-        dataset_dir = data_config_path.parent
-    else:
-        dataset_dir = data_config_path
 
     cache_dir = Path(config.cache.cache_dir)
 
@@ -148,8 +166,8 @@ def cmd_cache_latents(args: argparse.Namespace) -> None:
     print(f"Frame counts: {config.cache.target_frames}")
     print()
 
-    # Discover
-    samples = discover_samples(str(dataset_dir), probe=True)
+    # Discover from actual dataset paths in data config
+    samples, _ = _discover_from_config(config.data_config)
     print(f"Discovered: {len(samples)} source samples")
 
     if not samples:
