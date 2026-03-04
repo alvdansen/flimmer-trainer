@@ -168,6 +168,12 @@ def build_cache_manifest(
         if t_file is not None and sample.caption is not None:
             caption_src = str(sample.caption)
 
+        # Preserve reference source path so cache-latents can find the
+        # reference image to VAE-encode for I2V first-frame conditioning.
+        ref_src: str | None = None
+        if r_file is not None and sample.reference is not None:
+            ref_src = str(sample.reference)
+
         entries.append(CacheEntry(
             sample_id=sample.sample_id,
             source_path=str(sample.target),
@@ -177,6 +183,7 @@ def build_cache_manifest(
             text_file=t_file,
             reference_file=r_file,
             caption_source_path=caption_src,
+            reference_source_path=ref_src,
             bucket_key=sample.bucket_key,
         ))
 

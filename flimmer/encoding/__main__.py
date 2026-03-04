@@ -228,14 +228,68 @@ def cmd_cache_latents(args: argparse.Namespace) -> None:
             print(f"    ERROR: {e}")
             error_count += 1
 
+    # --- Reference image encoding (I2V first-frame conditioning) ---
+    # Deduplicate: one reference per source path (multiple entries may
+    # share the same reference image across frame-count expansions).
+    ref_entries = [
+        e for e in manifest.entries
+        if e.reference_source_path and e.reference_file
+    ]
+    seen_ref_paths: set[str] = set()
+    unique_refs: list[tuple] = []
+    for entry in ref_entries:
+        if entry.reference_source_path not in seen_ref_paths:
+            unique_refs.append(entry)
+            seen_ref_paths.add(entry.reference_source_path)
+
+    ref_encoded = 0
+    ref_skipped = 0
+    ref_errors = 0
+
+    if unique_refs:
+        print(f"\nEncoding {len(unique_refs)} reference images...")
+        for i, entry in enumerate(unique_refs):
+            ref_out_path = cache_dir / entry.reference_file
+            if ref_out_path.is_file() and not args.force:
+                ref_skipped += 1
+                continue
+
+            stem = Path(entry.reference_source_path).stem
+            print(f"  [{i+1}/{len(unique_refs)}] Reference: {stem}")
+
+            try:
+                # Get target resolution from the entry's bucket key
+                # bucket_key format: "{W}x{H}x{F}"
+                parts = entry.bucket_key.split("x")
+                target_w = int(parts[0])
+                target_h = int(parts[1])
+
+                result = encoder.encode_reference_image(
+                    Path(entry.reference_source_path),
+                    target_width=target_w,
+                    target_height=target_h,
+                )
+
+                from safetensors.torch import save_file
+                ref_out_path.parent.mkdir(parents=True, exist_ok=True)
+                save_file(result, str(ref_out_path))
+                ref_encoded += 1
+
+            except Exception as e:
+                print(f"    ERROR: {e}")
+                ref_errors += 1
+
     encoder.cleanup()
     save_cache_manifest(manifest, cache_dir)
 
     print(f"\nVAE encoding complete:")
-    print(f"  Encoded: {encoded_count}")
-    print(f"  Skipped (cached): {skip_count}")
-    if error_count:
-        print(f"  Errors: {error_count}")
+    print(f"  Latents encoded: {encoded_count}")
+    print(f"  Latents skipped (cached): {skip_count}")
+    if ref_encoded or ref_skipped:
+        print(f"  References encoded: {ref_encoded}")
+        print(f"  References skipped (cached): {ref_skipped}")
+    if error_count or ref_errors:
+        print(f"  Errors: {error_count + ref_errors}")
 
 
 # ---------------------------------------------------------------------------

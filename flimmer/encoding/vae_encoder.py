@@ -323,6 +323,99 @@ class WanVaeEncoder:
 
         return tensor
 
+    def encode_reference_image(
+        self,
+        image_path: Path,
+        target_width: int,
+        target_height: int,
+    ) -> dict[str, "torch.Tensor"]:
+        """Encode a single reference image through the VAE for I2V conditioning.
+
+        Loads a PNG/JPG, resizes to the target resolution (matching the video
+        bucket), normalizes to [-1, 1], and encodes through the VAE as a
+        single frame. This produces the first-frame latent that I2V models
+        use as conditioning — without it, I2V trains as T2V (16 channels
+        instead of 36).
+
+        Uses PIL instead of ffmpeg because it's a single image — no process
+        overhead, simpler error handling.
+
+        Args:
+            image_path: Path to the reference image (PNG or JPG).
+            target_width: Target width in pixels (must be multiple of 8).
+            target_height: Target height in pixels (must be multiple of 8).
+
+        Returns:
+            Dict with 'reference' key containing tensor of shape
+            [C, 1, H//8, W//8] (latent channels, 1 temporal frame,
+            spatially compressed).
+
+        Raises:
+            EncoderError: If loading or encoding fails.
+        """
+        self._ensure_vae()
+
+        try:
+            import torch
+            from PIL import Image
+        except ImportError as e:
+            raise EncoderError("wan_vae", f"Required packages not installed: {e}")
+
+        if not image_path.is_file():
+            raise EncoderError(
+                "wan_vae",
+                f"Reference image not found: '{image_path}'"
+            )
+
+        try:
+            # Load and resize image
+            img = Image.open(image_path).convert("RGB")
+            if img.size != (target_width, target_height):
+                img = img.resize((target_width, target_height), Image.LANCZOS)
+
+            # Convert to tensor and normalize to [-1, 1]
+            import numpy as np
+            pixels = np.array(img, dtype=np.float32)
+            pixels = (pixels / 127.5) - 1.0
+
+            # Reshape: [H, W, C] -> [1, C, 1, H, W] (batch=1, single frame)
+            pixels = np.transpose(pixels, (2, 0, 1))  # [C, H, W]
+            tensor = torch.from_numpy(pixels).unsqueeze(0).unsqueeze(2)  # [1, C, 1, H, W]
+
+            # Convert to model dtype and device
+            dtype_map = {
+                "bf16": torch.bfloat16,
+                "fp16": torch.float16,
+                "fp32": torch.float32,
+            }
+            dtype = dtype_map.get(self._dtype_str, torch.bfloat16)
+            tensor = tensor.to(dtype=dtype, device=self._device)
+
+            # Encode through VAE
+            with torch.no_grad():
+                latent_dist = self._vae.encode(tensor)
+                if hasattr(latent_dist, "latent_dist"):
+                    latent = latent_dist.latent_dist.sample()
+                elif hasattr(latent_dist, "sample"):
+                    latent = latent_dist.sample()
+                else:
+                    latent = latent_dist
+
+            # Apply scaling factor if the VAE uses one
+            if hasattr(self._vae.config, "scaling_factor"):
+                latent = latent * self._vae.config.scaling_factor
+
+            # Squeeze batch dim: [1, C, 1, H//8, W//8] -> [C, 1, H//8, W//8]
+            return {"reference": latent.squeeze(0).cpu()}
+
+        except EncoderError:
+            raise
+        except Exception as e:
+            raise EncoderError(
+                "wan_vae",
+                f"Reference image encoding failed for '{image_path}': {e}"
+            ) from e
+
     def cleanup(self) -> None:
         """Release GPU memory.
 

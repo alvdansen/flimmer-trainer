@@ -219,6 +219,11 @@ class CacheEntry(BaseModel):
     the target file. Without this, cache-text would fail to find captions
     for flimmer-structured datasets."""
 
+    reference_source_path: str | None = None
+    """Absolute path to the reference image (PNG/JPG). Stored so the
+    encoding loop knows which image to VAE-encode for I2V first-frame
+    conditioning. Parallels caption_source_path."""
+
     bucket_key: str = ""
     """Bucket key for this sample ('{W}x{H}x{F}')."""
 
