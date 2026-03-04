@@ -186,12 +186,17 @@ def _apply_unified_overrides(config: dict, overrides: dict) -> None:
     """Apply overrides for a unified (non-expert) phase.
 
     Maps override keys to their config locations and updates the
-    base config in place.
+    base config in place. Disables MoE fork so resolve_phases()
+    produces exactly one unified phase (no leaked expert phases).
 
     Args:
         config: The mutable base config dict.
         overrides: Phase override key-value pairs.
     """
+    # Disable MoE fork — a unified project phase must resolve to
+    # exactly one unified training phase, not unified + experts.
+    config.setdefault("moe", {})["fork_enabled"] = False
+
     for key, value in overrides.items():
         if value is None:
             continue
@@ -215,7 +220,9 @@ def _apply_expert_overrides(
     """Apply overrides for an MoE expert phase.
 
     Sets moe.fork_enabled=True, applies boundary_ratio from extras,
-    and puts per-expert overrides into the expert section.
+    and puts per-expert overrides into the expert section. Disables
+    the unified phase and the OTHER expert so resolve_phases()
+    produces exactly one expert training phase.
 
     Args:
         config: The mutable base config dict.
@@ -224,6 +231,13 @@ def _apply_expert_overrides(
     """
     moe = config.setdefault("moe", {})
     moe["fork_enabled"] = True
+
+    # Suppress the unified phase — this project phase is expert-only.
+    config.setdefault("training", {})["unified_epochs"] = 0
+
+    # Disable the OTHER expert so it doesn't leak through.
+    other_expert = "low_noise" if phase_config.phase_type == "high_noise" else "high_noise"
+    moe.setdefault(other_expert, {})["enabled"] = False
 
     # Apply boundary_ratio from extras
     if "boundary_ratio" in phase_config.extras:
@@ -237,5 +251,7 @@ def _apply_expert_overrides(
         expert_overrides[key] = value
 
     # Place overrides under the expert section (e.g., moe.high_noise)
-    if expert_overrides:
-        moe[phase_config.phase_type] = expert_overrides
+    # Merge into existing expert dict to preserve defaults, then add overrides.
+    expert_section = moe.setdefault(phase_config.phase_type, {})
+    expert_section.update(expert_overrides)
+    expert_section["enabled"] = True

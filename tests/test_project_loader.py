@@ -458,6 +458,75 @@ class TestMergePhaseConfig:
 
         assert result == output_path
 
+    # ── Phase isolation tests ─────────────────────────────────────
+
+    def test_unified_phase_disables_fork(self, tmp_path):
+        """Unified phase sets fork_enabled=false so expert phases don't leak."""
+        # Base config with fork_enabled=true and expert epochs set —
+        # without the fix, resolve_phases would produce extra expert phases.
+        base_config = json.loads(json.dumps(SAMPLE_BASE_CONFIG))
+        base_config["moe"]["fork_enabled"] = True
+        base_config["moe"]["high_noise"] = {"max_epochs": 30}
+        base_config["moe"]["low_noise"] = {"max_epochs": 50}
+
+        base_path = _write_yaml(tmp_path / "base_train.yaml", base_config)
+        yaml_path = _write_yaml(tmp_path / "project.yaml", SAMPLE_PROJECT_YAML)
+
+        from flimmer.project.loader import merge_phase_config, project_from_yaml
+
+        project = project_from_yaml(yaml_path)
+        output_path = tmp_path / "merged.yaml"
+        merge_phase_config(base_path, project, 0, output_path)
+
+        merged = yaml.safe_load(output_path.read_text())
+        assert merged["moe"]["fork_enabled"] is False
+
+    def test_expert_phase_zeroes_unified_epochs(self, tmp_path):
+        """Expert phase sets unified_epochs=0 so no unified phase leaks."""
+        base_config = json.loads(json.dumps(SAMPLE_BASE_CONFIG))
+        base_config["training"]["unified_epochs"] = 10
+
+        base_path = _write_yaml(tmp_path / "base_train.yaml", base_config)
+        yaml_path = _write_yaml(tmp_path / "project.yaml", SAMPLE_PROJECT_YAML)
+
+        from flimmer.project.loader import merge_phase_config, project_from_yaml
+
+        project = project_from_yaml(yaml_path)
+        output_path = tmp_path / "merged.yaml"
+        # Phase 1 = high_noise expert
+        merge_phase_config(base_path, project, 1, output_path)
+
+        merged = yaml.safe_load(output_path.read_text())
+        assert merged["training"]["unified_epochs"] == 0
+
+    def test_expert_phase_disables_other_expert(self, tmp_path):
+        """Expert phase disables the OTHER expert so only one phase resolves."""
+        base_config = json.loads(json.dumps(SAMPLE_BASE_CONFIG))
+        base_config["moe"]["fork_enabled"] = True
+        base_config["moe"]["high_noise"] = {"max_epochs": 30}
+        base_config["moe"]["low_noise"] = {"max_epochs": 50}
+
+        base_path = _write_yaml(tmp_path / "base_train.yaml", base_config)
+        yaml_path = _write_yaml(tmp_path / "project.yaml", SAMPLE_PROJECT_YAML)
+
+        from flimmer.project.loader import merge_phase_config, project_from_yaml
+
+        project = project_from_yaml(yaml_path)
+
+        # Phase 1 = high_noise → low_noise should be disabled
+        out_hn = tmp_path / "merged_hn.yaml"
+        merge_phase_config(base_path, project, 1, out_hn)
+        merged_hn = yaml.safe_load(out_hn.read_text())
+        assert merged_hn["moe"]["low_noise"]["enabled"] is False
+        assert merged_hn["moe"]["high_noise"]["enabled"] is True
+
+        # Phase 2 = low_noise → high_noise should be disabled
+        out_ln = tmp_path / "merged_ln.yaml"
+        merge_phase_config(base_path, project, 2, out_ln)
+        merged_ln = yaml.safe_load(out_ln.read_text())
+        assert merged_ln["moe"]["high_noise"]["enabled"] is False
+        assert merged_ln["moe"]["low_noise"]["enabled"] is True
+
 
 # ── Tests: CLI ──────────────────────────────────────────────────────
 
