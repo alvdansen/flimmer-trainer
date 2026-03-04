@@ -14,6 +14,30 @@ import pytest
 import yaml
 
 
+# ── Ensure model registry is populated ───────────────────────────────
+
+@pytest.fixture(autouse=True)
+def _ensure_models_registered():
+    """Re-register model definitions if the registry was cleared.
+
+    The tests/phases/conftest.py clean_registry fixture clears the
+    global MODEL_REGISTRY after phase tests. Since Python caches
+    module imports, the auto-registration from flimmer.phases.__init__
+    won't re-run. This fixture re-populates the registry so
+    Project.create() can find model definitions.
+    """
+    from flimmer.phases.registry import MODEL_REGISTRY, register_model
+
+    if not MODEL_REGISTRY:
+        from flimmer.phases.models.moe import WAN_22_T2V
+        from flimmer.phases.models.wan21_i2v import WAN_21_I2V
+        from flimmer.phases.models.wan21_t2v import WAN_21_T2V
+        from flimmer.phases.models.wan22_i2v import WAN_22_I2V
+
+        for model in (WAN_21_T2V, WAN_21_I2V, WAN_22_T2V, WAN_22_I2V):
+            register_model(model, replace=True)
+
+
 # ── Sample data ──────────────────────────────────────────────────────
 
 SAMPLE_PROJECT_YAML = {
