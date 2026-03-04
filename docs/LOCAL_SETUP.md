@@ -143,22 +143,22 @@ tmux attach -t flimmer-project_moe
 
 A project YAML defines a multi-phase training workflow — typically unified warmup followed by per-expert specialization for Wan 2.2 MoE models. The project runner executes phases in order and tracks their status.
 
-See `examples/projects/` for project configs — `i2v_moe_phases.yaml` for MoE fork-and-specialize, `t2v_phases.yaml` for multi-dataset progression.
+See `config_templates/projects/` for project configs — `i2v_moe_phases.yaml` for MoE fork-and-specialize, `t2v_phases.yaml` for multi-dataset progression.
 
 **Basic commands:**
 
 ```bash
 # Run the next pending phase
-bash scripts/train.sh --project examples/projects/i2v_moe_phases.yaml
+bash scripts/train.sh --project config_templates/projects/i2v_moe_phases.yaml
 
 # Run all pending phases sequentially
-bash scripts/train.sh --project examples/projects/i2v_moe_phases.yaml --all
+bash scripts/train.sh --project config_templates/projects/i2v_moe_phases.yaml --all
 
 # Check which phases are completed/pending
-bash scripts/train.sh --project examples/projects/i2v_moe_phases.yaml --status
+bash scripts/train.sh --project config_templates/projects/i2v_moe_phases.yaml --status
 
 # Preview what would happen
-bash scripts/train.sh --project examples/projects/i2v_moe_phases.yaml --dry-run
+bash scripts/train.sh --project config_templates/projects/i2v_moe_phases.yaml --dry-run
 ```
 
 Re-running a project skips completed phases and picks up where it left off. Phase status is tracked in a `flimmer_project.json` file alongside the project YAML.

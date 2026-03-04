@@ -220,11 +220,11 @@ phases:
 
 The only difference from the dataset-progression example is the `type` field. Instead of all phases being `full_noise`, you use `high_noise` and `low_noise` to tell Flimmer which expert to train.
 
-See `examples/projects/i2v_moe_phases.yaml` for a complete MoE project config.
+See `config_templates/projects/i2v_moe_phases.yaml` for a complete MoE project config.
 
 ## Examples
 
 | Example | What it shows |
 |---------|--------------|
-| `examples/projects/t2v_phases.yaml` | Dataset progression — close-ups → full-body → mixed |
-| `examples/projects/i2v_moe_phases.yaml` | MoE fork-and-specialize — full_noise → high-noise → low-noise |
+| `config_templates/projects/t2v_phases.yaml` | Dataset progression — close-ups → full-body → mixed |
+| `config_templates/projects/i2v_moe_phases.yaml` | MoE fork-and-specialize — full_noise → high-noise → low-noise |

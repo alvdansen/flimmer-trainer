@@ -185,8 +185,8 @@ my_project/
 With this layout, your training config just says `data_config: ./flimmer_data.yaml` and your data config says `path: ./video_clips` — no absolute paths needed.
 
 Starter projects you can copy and edit:
-- `config_templates/example_simple/` — single-config training (no phases)
-- `config_templates/example_phased/` — multi-phase training with project.yaml
+- `example_simple/` — single-config training (no phases)
+- `example_phased/` — multi-phase training with project.yaml
 
 ## Running
 

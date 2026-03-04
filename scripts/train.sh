@@ -60,11 +60,11 @@ usage() {
     echo "Exactly one of --config or --project is required."
     echo ""
     echo "Examples:"
-    echo "  bash scripts/train.sh --project examples/projects/i2v_moe_phases.yaml"
-    echo "  bash scripts/train.sh --project examples/projects/i2v_moe_phases.yaml --all --tmux"
-    echo "  bash scripts/train.sh --config examples/training/t2v_wan22.yaml"
-    echo "  bash scripts/train.sh --project examples/projects/i2v_moe_phases.yaml --status"
-    echo "  bash scripts/train.sh --project examples/projects/i2v_moe_phases.yaml --dry-run"
+    echo "  bash scripts/train.sh --project config_templates/projects/i2v_moe_phases.yaml"
+    echo "  bash scripts/train.sh --project config_templates/projects/i2v_moe_phases.yaml --all --tmux"
+    echo "  bash scripts/train.sh --config config_templates/training/t2v_wan22.yaml"
+    echo "  bash scripts/train.sh --project config_templates/projects/i2v_moe_phases.yaml --status"
+    echo "  bash scripts/train.sh --project config_templates/projects/i2v_moe_phases.yaml --dry-run"
 }
 
 # Collect all original args for tmux re-invocation

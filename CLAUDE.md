@@ -61,6 +61,10 @@ python -m flimmer.encoding    # Latent pre-encoding (VAE + T5)
 python -m flimmer.training    # Training loop
 ```
 
+## Config Templates
+
+Example YAML configs live in `config_templates/` (data, training, projects).
+
 ## Dependencies
 
 Core: `pydantic`, `pyyaml`

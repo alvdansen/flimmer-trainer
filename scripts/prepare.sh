@@ -52,8 +52,8 @@ usage() {
     echo "Exactly one of --config or --project is required."
     echo ""
     echo "Examples:"
-    echo "  bash scripts/prepare.sh --config examples/training/t2v_wan22.yaml"
-    echo "  bash scripts/prepare.sh --project examples/projects/i2v_moe_phases.yaml"
+    echo "  bash scripts/prepare.sh --config config_templates/training/t2v_wan22.yaml"
+    echo "  bash scripts/prepare.sh --project config_templates/projects/i2v_moe_phases.yaml"
     echo "  bash scripts/prepare.sh --config train.yaml --dry-run"
     echo "  bash scripts/prepare.sh --config train.yaml --force"
 }

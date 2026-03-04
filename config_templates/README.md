@@ -64,15 +64,6 @@ Projects are for when you want multi-phase training — either MoE fork-and-spec
 
 ```
 config_templates/
-├── example_simple/         Copy-and-edit starter: single-config training
-│   ├── flimmer_data.yaml
-│   └── flimmer_train.yaml
-│
-├── example_phased/         Copy-and-edit starter: multi-phase training
-│   ├── flimmer_data.yaml
-│   ├── flimmer_train.yaml
-│   └── project.yaml
-│
 ├── data/                   Dataset configs — what your clips look like
 │   ├── minimal.yaml          Just a path. Start here.
 │   ├── standard.yaml         Anchor word + first frame extraction

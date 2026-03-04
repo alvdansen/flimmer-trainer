@@ -1505,7 +1505,7 @@ class TestFormatValidationError:
         except ValidationError as e:
             msg = _format_validation_error(e)
             assert "Training config validation failed" in msg
-            assert "See examples/" in msg
+            assert "See config_templates/" in msg
 
     def test_strips_value_error_prefix(self):
         """Value error prefix is cleaned from custom validator messages."""

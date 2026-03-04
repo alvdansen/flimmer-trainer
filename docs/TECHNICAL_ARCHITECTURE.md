@@ -152,7 +152,7 @@ Adding a new model means implementing these four interfaces. The training loop, 
 ```
 flimmer-kit/
 ├── pyproject.toml                 # Package config (9 optional dep groups)
-├── examples/                      # Example YAML configs (data/, training/, projects/)
+├── config_templates/               # Example YAML configs (data/, training/, projects/)
 │
 ├── flimmer/
 │   ├── config/                    # Data + training config schemas

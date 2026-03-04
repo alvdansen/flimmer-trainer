@@ -299,7 +299,7 @@ def _format_config_hint(video_config: "VideoConfig | None") -> list[str]:
         )
     lines.append("  To use a different fps:        add --fps 24 to this command")
     lines.append("  To use a different resolution:  create a flimmer_data.yaml with a")
-    lines.append("                                  video: section (see examples/ folder)")
+    lines.append("                                  video: section (see config_templates/ folder)")
     return lines
 
 
