@@ -1,8 +1,8 @@
 """Wan 2.1 I2V 14B (non-MoE) model definition.
 
 Image-to-Video variant of Wan 2.1. Non-MoE, unified phase type only.
-Adds reference_image signal and uses higher caption_dropout_rate default
-(0.15) because the reference image carries more conditioning.
+Adds first_frame signal and uses higher caption_dropout_rate default
+(0.15) because the first-frame image carries more conditioning.
 
 No boundary_ratio param since there is no MoE expert routing.
 """
@@ -33,9 +33,9 @@ WAN_21_I2V = ModelDefinition(
             description="Target video data",
         ),
         SignalDeclaration(
-            modality="reference_image",
+            modality="first_frame",
             required=True,
-            description="Reference image for I2V conditioning",
+            description="First-frame image for I2V conditioning",
         ),
     ],
     phase_types=[
@@ -90,6 +90,15 @@ WAN_21_I2V = ModelDefinition(
             max_value=1.0,
             phase_level=True,
             description="Probability of dropping entire caption (higher for I2V)",
+        ),
+        ParamSpec(
+            name="first_frame_dropout_rate",
+            type="float",
+            default=0.05,
+            min_value=0.0,
+            max_value=1.0,
+            phase_level=True,
+            description="Probability of dropping first-frame conditioning (independent from caption dropout)",
         ),
         ParamSpec(
             name="lora_dropout",

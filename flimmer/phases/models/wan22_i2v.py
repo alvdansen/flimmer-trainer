@@ -1,9 +1,9 @@
 """Wan 2.2 I2V 14B (MoE) model definition.
 
 Image-to-Video variant of the Wan 2.2 MoE architecture. Same phase
-types and expert structure as the T2V variant, but adds reference_image
+types and expert structure as the T2V variant, but adds first_frame
 signal and has higher caption_dropout_rate default (0.15 vs 0.10)
-because the reference image carries more conditioning.
+because the first-frame image carries more conditioning.
 """
 
 from ..definitions import (
@@ -32,9 +32,9 @@ WAN_22_I2V = ModelDefinition(
             description="Target video data",
         ),
         SignalDeclaration(
-            modality="reference_image",
+            modality="first_frame",
             required=True,
-            description="Reference image for I2V conditioning",
+            description="First-frame image for I2V conditioning",
         ),
     ],
     phase_types=[
@@ -101,6 +101,15 @@ WAN_22_I2V = ModelDefinition(
             description="Probability of dropping entire caption (higher for I2V)",
         ),
         ParamSpec(
+            name="first_frame_dropout_rate",
+            type="float",
+            default=0.05,
+            min_value=0.0,
+            max_value=1.0,
+            phase_level=True,
+            description="Probability of dropping first-frame conditioning (independent from caption dropout)",
+        ),
+        ParamSpec(
             name="lora_dropout",
             type="float",
             default=0.0,
@@ -144,11 +153,11 @@ WAN_22_I2V = ModelDefinition(
         ParamSpec(
             name="boundary_ratio",
             type="float",
-            default=0.875,
+            default=0.900,
             min_value=0.0,
             max_value=1.0,
             phase_level=True,
-            description="SNR boundary for expert routing",
+            description="SNR boundary for expert routing (0.900 for I2V per official config and musubi-tuner)",
         ),
         # -- Run-level (not overridable per phase) --
         ParamSpec(
@@ -188,7 +197,7 @@ WAN_22_I2V = ModelDefinition(
         "learning_rate": 5e-5,
         "batch_size": 1,
         "max_epochs": 10,
-        "boundary_ratio": 0.875,
+        "boundary_ratio": 0.900,
     },
 )
 
