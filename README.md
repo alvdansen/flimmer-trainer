@@ -2,7 +2,7 @@
 
 Video LoRA training toolkit for diffusion transformer models. Starting with Wan 2.1 and Wan 2.2 (T2V and I2V), with more model integrations planned.
 
-> **Beta release** — the training pipeline is functional and producing results, but Wan 2.2 MoE hyperparameters are experimental and actively being validated. Expect defaults to evolve.
+> **Beta release** — Flimmer is functional and producing results, but this is an early release. Training defaults, config schemas, and CLI interfaces may change. MoE hyperparameters are actively being validated. Local scripts are included but lightly tested.
 
 Built by [Alvdansen Labs](https://github.com/alvdansen).
 
@@ -13,6 +13,18 @@ Flimmer takes you from raw video footage to a trained LoRA checkpoint. It covers
 The data preparation tools are **standalone** — they produce standard output formats that work with any trainer (kohya/sd-scripts, ai-toolkit, etc.), not just Flimmer.
 
 ## Quick Start
+
+### Using scripts (recommended for getting started)
+
+```bash
+bash scripts/setup.sh --variant 2.2_i2v         # install deps + download weights
+bash scripts/prepare.sh --config train.yaml      # pre-encode latents + text
+bash scripts/train.sh --config train.yaml        # train
+```
+
+See [Local Setup Guide](docs/LOCAL_SETUP.md) for full options and project-based workflows.
+
+### Using Python commands (power users)
 
 **Already have a prepared dataset?**
 
@@ -133,11 +145,54 @@ moe:
 
 **Base strategy (open question):** For MoE phased training, the unified phase produces a shared LoRA that gets forked. What the low-noise expert starts from after the fork matters — should it inherit the merged unified weights, or start from a low-noise-only baseline? We're actively running experiments to answer this. A merge script is included in `runpod/merge_expert_weights.py`.
 
+## Phase System
+
+For Wan 2.2 MoE models, Flimmer supports multi-phase training through project configs. A project defines a sequence of training phases — typically unified warmup followed by per-expert specialization:
+
+```yaml
+name: holly_i2v
+model_id: wan-2.2-i2v-14b
+base_config: ./holly/flimmer_train.yaml
+
+run_level_params:
+  lora_rank: 16
+  lora_alpha: 16
+  mixed_precision: bf16
+
+phases:
+  - type: unified
+    name: "Unified Warmup"
+    overrides:
+      learning_rate: 5e-5
+      max_epochs: 15
+
+  - type: high_noise
+    name: "High Noise Expert"
+    overrides:
+      learning_rate: 1e-4
+      max_epochs: 30
+
+  - type: low_noise
+    name: "Low Noise Expert"
+    overrides:
+      learning_rate: 8e-5
+      max_epochs: 50
+```
+
+Phases are tracked automatically. Re-running a project skips completed phases and picks up where it left off.
+
+```bash
+bash scripts/train.sh --project project.yaml --status    # check phase progress
+bash scripts/train.sh --project project.yaml --all       # run all pending phases
+```
+
+For single-config training (no phases), use `--config` instead of `--project`. See `examples/` for both approaches.
+
 ## Running
 
 **RunPod (recommended):** Setup scripts are included in `runpod/` for cloud GPU training. See the configs there for tested pod configurations.
 
-**Local:** Local training code is included but currently untested. If you have a local GPU with sufficient VRAM, the same training commands apply — just point your config at local model weight paths.
+**Local:** Setup, encoding, and training scripts are included for local GPU machines. See [Local Setup Guide](docs/LOCAL_SETUP.md) for the full workflow.
 
 ## CLI Quick Reference
 
@@ -158,8 +213,6 @@ moe:
 | encoding | `python -m flimmer.encoding cache-text -c <config>` | Encode captions through T5 |
 | training | `python -m flimmer.training plan -c <config>` | Preview training plan (dry run) |
 | training | `python -m flimmer.training train -c <config>` | Run training |
-
-> The CLI package is currently named `flimmer` — it will be renamed to `flimmer` before public release.
 
 ## Installation
 
@@ -197,6 +250,11 @@ flimmer/
   encoding/        Latent pre-encoding and caching
   training/        Training loop, LoRA injection, checkpointing
   training/wan/    Wan model backend (2.1/2.2 T2V/I2V)
+  phases/          Phase system: model definitions and phase resolution
+  project/         Multi-phase project runner
+scripts/           Local run scripts (setup, prepare, train)
+examples/          Example YAML configs (data, training, projects)
+docs/              Architecture, pipelines, config reference, guides
 ```
 
 ## Philosophy
@@ -211,7 +269,8 @@ flimmer/
 - [Technical Architecture](docs/TECHNICAL_ARCHITECTURE.md) — How video LoRA training works and Flimmer's design
 - [Pipelines](docs/PIPELINES.md) — Practical guides for common training scenarios
 - [Training Config Walkthrough](docs/TRAINING_CONFIG_WALKTHROUGH.md) — Training config reference
-- [Training Methodology](docs/TRAINING_METHODOLOGY.md) — MoE training strategy and dataset standards
+- [Local Setup Guide](docs/LOCAL_SETUP.md) — Setting up and running on a local GPU machine
+- [I2V Training Guide](docs/I2V_GUIDE.md) — Image-to-Video training with Wan models
 
 ## License
 
