@@ -1,0 +1,105 @@
+# ══════════════════════════════════════════════════════════════════════
+# Training Config — Example Simple Project
+# ══════════════════════════════════════════════════════════════════════
+#
+# Single-config training (no phases). One pass from start to finish.
+# This is all you need for a straightforward LoRA.
+#
+# Copy this file into your own project folder and edit to match.
+# See config_templates/training/ for variant-specific templates.
+#
+# Steps:
+#   1. Copy this folder to your project location
+#   2. Put your clips + captions in video_clips/
+#   3. Edit the fields marked CHANGE below
+#   4. bash scripts/prepare.sh --config flimmer_train.yaml
+#   5. bash scripts/train.sh --config flimmer_train.yaml
+#
+# ══════════════════════════════════════════════════════════════════════
+
+
+# ── Model ─────────────────────────────────────────────────────────
+# CHANGE: pick your variant and point at your weight files.
+# Variants: 2.2_t2v, 2.2_i2v, 2.1_i2v (480p/720p)
+
+model:
+  variant: 2.2_i2v                     # CHANGE to your variant
+
+  # MoE models (2.2_*) need two DiT files:
+  dit_high: ./models/wan2.2_i2v_high_noise_14B_fp16.safetensors
+  dit_low: ./models/wan2.2_i2v_low_noise_14B_fp16.safetensors
+
+  # Non-MoE models (2.1_*) need one DiT file instead:
+  # dit: ./models/wan2.1_i2v_480p_14B_fp16.safetensors
+
+  # Shared (same for all variants)
+  vae: ./models/wan_2.1_vae.safetensors
+  t5: ./models/umt5_xxl_fp16.safetensors
+
+data_config: ./flimmer_data.yaml       # points to the data config next door
+
+
+# ── LoRA ──────────────────────────────────────────────────────────
+
+lora:
+  rank: 16
+  alpha: 16
+  loraplus_lr_ratio: 4.0
+  dropout: 0.05
+
+
+# ── Optimizer ─────────────────────────────────────────────────────
+
+optimizer:
+  type: adamw8bit
+  learning_rate: 5e-5
+  weight_decay: 0.01
+  max_grad_norm: 1.0
+
+
+# ── Scheduler ─────────────────────────────────────────────────────
+
+scheduler:
+  type: cosine_with_min_lr
+  warmup_steps: 0
+  min_lr_ratio: 0.01
+
+
+# ── Training ──────────────────────────────────────────────────────
+
+training:
+  mixed_precision: bf16
+  base_model_precision: bf16
+  gradient_checkpointing: true
+  seed: 42
+  unified_epochs: 15                   # CHANGE: total training epochs
+  batch_size: 1
+  gradient_accumulation_steps: 1
+  caption_dropout_rate: 0.10
+  timestep_sampling: shift
+
+
+# ── MoE (Wan 2.2 only) ───────────────────────────────────────────
+# For simple training, keep fork_enabled: false.
+# Both experts train together as one — no phase splitting needed.
+
+moe:
+  enabled: true                        # set false for Wan 2.1
+  fork_enabled: false                  # no expert fork in simple mode
+
+
+# ── Output ────────────────────────────────────────────────────────
+
+save:
+  output_dir: ./output                 # CHANGE: where checkpoints go
+  name: my_lora                        # CHANGE: checkpoint filename prefix
+  save_every_n_epochs: 5
+  save_last: true
+  format: safetensors
+
+logging:
+  backends: [console]                  # add "wandb" for W&B tracking
+  log_every_n_steps: 10
+
+sampling:
+  enabled: false

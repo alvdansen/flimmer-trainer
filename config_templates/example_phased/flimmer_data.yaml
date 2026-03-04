@@ -1,0 +1,31 @@
+# ══════════════════════════════════════════════════════════════════════
+# Data Config — Example Phased Project
+# ══════════════════════════════════════════════════════════════════════
+#
+# Same as any data config — describes your dataset.
+#
+# In a phased project, each phase can optionally point to a different
+# data config (e.g., close-ups only, then full-body). If your phases
+# all use the same dataset, one data config is enough.
+#
+# ══════════════════════════════════════════════════════════════════════
+
+dataset:
+  name: my_subject                     # your project name
+  use_case: character                  # character | style | motion | object
+
+datasets:
+  - path: ./video_clips               # folder with .mp4 + .txt pairs
+    repeats: 1
+
+video:
+  fps: 16
+  resolution: 480                      # 480 or 720
+
+controls:
+  text:
+    anchor_word: my_subject            # change to your trigger word
+  # Uncomment for I2V:
+  # images:
+  #   reference:
+  #     source: first_frame

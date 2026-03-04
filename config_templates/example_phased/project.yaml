@@ -1,0 +1,68 @@
+# ══════════════════════════════════════════════════════════════════════
+# Project Config — Example Phased Project
+# ══════════════════════════════════════════════════════════════════════
+#
+# Defines the phases for multi-stage training. Each phase overrides
+# parameters from flimmer_train.yaml (the base config).
+#
+# The LoRA checkpoint carries forward between phases automatically.
+# Re-running skips completed phases and picks up where it left off.
+#
+# CHANGE: edit the phases below to match your training plan.
+# See config_templates/projects/ for more examples.
+#
+# Usage:
+#   bash scripts/train.sh --project project.yaml --status   # check progress
+#   bash scripts/train.sh --project project.yaml --all      # run all phases
+#
+# ══════════════════════════════════════════════════════════════════════
+
+
+name: my_project                       # CHANGE: your project name
+model_id: wan-2.2-i2v-14b             # CHANGE: your model
+
+base_config: ./flimmer_train.yaml      # inherits all settings from here
+
+
+# ── Run-Level Params (locked for entire project) ─────────────────
+# These cannot change between phases.
+
+run_level_params:
+  lora_rank: 16
+  lora_alpha: 16
+  mixed_precision: bf16
+  base_model_precision: bf16
+
+
+# ── Phases ────────────────────────────────────────────────────────
+# Edit these to match your workflow. Two common patterns:
+#
+# Pattern A — MoE expert specialization (Wan 2.2):
+#   full_noise -> high_noise -> low_noise
+#
+# Pattern B — Dataset progression (any model):
+#   full_noise (close-ups) -> full_noise (full-body) -> full_noise (mixed)
+#
+# This example shows Pattern A. For Pattern B, see
+# config_templates/projects/t2v_phases.yaml.
+
+phases:
+
+  # Phase 1: Train both experts together (shared LoRA).
+  - type: full_noise
+    name: "Unified Warmup"
+    overrides:
+      learning_rate: 5e-5
+      max_epochs: 15
+
+  # Phase 2: High-noise expert (composition, motion).
+  - type: high_noise
+    name: "High Noise Expert"
+    overrides:
+      max_epochs: 30
+
+  # Phase 3: Low-noise expert (detail, texture).
+  - type: low_noise
+    name: "Low Noise Expert"
+    overrides:
+      max_epochs: 50

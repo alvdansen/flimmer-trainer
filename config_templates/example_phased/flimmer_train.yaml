@@ -1,0 +1,96 @@
+# ══════════════════════════════════════════════════════════════════════
+# Training Config (Base) — Example Phased Project
+# ══════════════════════════════════════════════════════════════════════
+#
+# This is the base training config that project.yaml inherits from.
+# It defines model paths, LoRA structure, optimizer, and output settings.
+#
+# Each phase in project.yaml overrides only what changes per phase
+# (learning_rate, max_epochs, data_config, etc.). Everything else
+# comes from here.
+#
+# ══════════════════════════════════════════════════════════════════════
+
+
+# ── Model ─────────────────────────────────────────────────────────
+# CHANGE: pick your variant and point at your weight files.
+
+model:
+  variant: 2.2_i2v                     # CHANGE to your variant
+
+  dit_high: ./models/wan2.2_i2v_high_noise_14B_fp16.safetensors
+  dit_low: ./models/wan2.2_i2v_low_noise_14B_fp16.safetensors
+
+  # Non-MoE (2.1_*) — use dit: instead of dit_high/dit_low:
+  # dit: ./models/wan2.1_i2v_480p_14B_fp16.safetensors
+
+  vae: ./models/wan_2.1_vae.safetensors
+  t5: ./models/umt5_xxl_fp16.safetensors
+
+data_config: ./flimmer_data.yaml
+
+
+# ── LoRA ──────────────────────────────────────────────────────────
+
+lora:
+  rank: 16
+  alpha: 16
+  loraplus_lr_ratio: 4.0
+  dropout: 0.05
+
+
+# ── Optimizer ─────────────────────────────────────────────────────
+# This is the default — phases can override learning_rate.
+
+optimizer:
+  type: adamw8bit
+  learning_rate: 5e-5
+  weight_decay: 0.01
+  max_grad_norm: 1.0
+
+
+# ── Scheduler ─────────────────────────────────────────────────────
+
+scheduler:
+  type: cosine_with_min_lr
+  warmup_steps: 0
+  min_lr_ratio: 0.01
+
+
+# ── Training ──────────────────────────────────────────────────────
+# Epochs are overridden per phase in project.yaml.
+
+training:
+  mixed_precision: bf16
+  base_model_precision: bf16
+  gradient_checkpointing: true
+  seed: 42
+  unified_epochs: 15                   # default, overridden per phase
+  batch_size: 1
+  gradient_accumulation_steps: 1
+  caption_dropout_rate: 0.10
+  timestep_sampling: shift
+
+
+# ── MoE ───────────────────────────────────────────────────────────
+
+moe:
+  enabled: true                        # set false for Wan 2.1
+  fork_enabled: true                   # enable expert fork after unified phase
+
+
+# ── Output ────────────────────────────────────────────────────────
+
+save:
+  output_dir: ./output
+  name: my_lora
+  save_every_n_epochs: 5
+  save_last: true
+  format: safetensors
+
+logging:
+  backends: [console]
+  log_every_n_steps: 10
+
+sampling:
+  enabled: false

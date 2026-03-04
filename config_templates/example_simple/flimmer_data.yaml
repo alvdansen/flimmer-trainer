@@ -1,0 +1,31 @@
+# ══════════════════════════════════════════════════════════════════════
+# Data Config — Example Simple Project
+# ══════════════════════════════════════════════════════════════════════
+#
+# Describes your dataset. Point "path" at the folder containing your
+# video clips and their sidecar .txt caption files.
+#
+# Copy this file into your own project folder and edit to match.
+# See config_templates/data/ for more options (minimal, standard, full).
+#
+# ══════════════════════════════════════════════════════════════════════
+
+dataset:
+  name: my_subject                     # your project name
+  use_case: character                  # character | style | motion | object
+
+datasets:
+  - path: ./video_clips               # folder with .mp4 + .txt pairs
+    repeats: 1
+
+video:
+  fps: 16                             # Wan's training FPS
+  resolution: 480                     # 480 or 720
+
+controls:
+  text:
+    anchor_word: my_subject            # change to your trigger word
+  # Uncomment for I2V training:
+  # images:
+  #   reference:
+  #     source: first_frame            # auto-extract first frame from each clip
