@@ -166,17 +166,17 @@ class TestMoeResolution:
 class TestWan22I2v:
     """Tests for Wan 2.2 I2V model definition."""
 
-    def test_i2v_registers_with_reference_image(self, _register_models):
+    def test_i2v_registers_with_first_frame(self, _register_models):
         model = get_model_definition("wan-2.2-i2v-14b")
         modalities = {s.modality for s in model.supported_signals}
-        assert "reference_image" in modalities
+        assert "first_frame" in modalities
         assert "text" in modalities
         assert "video" in modalities
 
-    def test_i2v_reference_image_is_required(self, _register_models):
+    def test_i2v_first_frame_is_required(self, _register_models):
         model = get_model_definition("wan-2.2-i2v-14b")
         ref_signal = next(
-            s for s in model.supported_signals if s.modality == "reference_image"
+            s for s in model.supported_signals if s.modality == "first_frame"
         )
         assert ref_signal.required is True
 
@@ -198,10 +198,10 @@ class TestWan22I2v:
         base_params = {p.name: p.default for p in model.phase_params}
         config = PhaseConfig(
             phase_type="high_noise",
-            signals={"reference_image": False},
+            signals={"first_frame": False},
             extras={"boundary_ratio": 0.875},
         )
         resolved = resolve_phase("wan-2.2-i2v-14b", config, base_params)
-        assert resolved.signals["reference_image"] is False
+        assert resolved.signals["first_frame"] is False
         assert resolved.signals["text"] is True
         assert resolved.signals["video"] is True

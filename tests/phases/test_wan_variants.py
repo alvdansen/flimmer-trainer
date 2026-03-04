@@ -3,7 +3,7 @@
 Verifies:
 - Wan 2.1 T2V and I2V register as non-MoE with unified-only phase type
 - Wan 2.1 models have NO boundary_ratio param
-- I2V variant has reference_image signal and higher caption_dropout_rate
+- I2V variants use first_frame modality (not reference_image) and first_frame_dropout_rate
 - Expert phase types fail validate_against() for non-MoE models
 - Multi-stage training via multiple unified PhaseConfigs with different overrides
 - All four model definitions appear in list_models()
@@ -89,12 +89,25 @@ class TestWan21T2vRegistration:
 
 
 class TestWan21I2vRegistration:
-    """Tests that Wan 2.1 I2V registers correctly with reference_image."""
+    """Tests that Wan 2.1 I2V registers correctly with first_frame modality."""
 
-    def test_registers_with_reference_image(self, _register_all):
+    def test_registers_with_first_frame(self, _register_all):
         model = get_model_definition("wan-2.1-i2v-14b")
         modalities = {s.modality for s in model.supported_signals}
-        assert "reference_image" in modalities
+        assert "first_frame" in modalities
+
+    def test_no_reference_image_modality(self, _register_all):
+        """Verify the old modality name is completely gone."""
+        model = get_model_definition("wan-2.1-i2v-14b")
+        modalities = {s.modality for s in model.supported_signals}
+        assert "reference_image" not in modalities
+
+    def test_has_first_frame_dropout_rate(self, _register_all):
+        model = get_model_definition("wan-2.1-i2v-14b")
+        param = model.get_param("first_frame_dropout_rate")
+        assert param is not None
+        assert param.default == 0.05
+        assert param.phase_level is True
 
     def test_higher_caption_dropout_default(self, _register_all):
         model = get_model_definition("wan-2.1-i2v-14b")
@@ -132,6 +145,54 @@ class TestCrossModelValidation:
         model = get_model_definition("wan-2.1-i2v-14b")
         with pytest.raises(PhaseConfigError, match="high_noise"):
             config.validate_against(model)
+
+
+# ---------------------------------------------------------------------------
+# Wan 2.2 I2V Updates (modality rename, first_frame_dropout_rate)
+# ---------------------------------------------------------------------------
+
+
+class TestWan22I2vUpdates:
+    """Wan 2.2 I2V model definition updates from Phase 2."""
+
+    def test_uses_first_frame_modality(self, _register_all):
+        model = get_model_definition("wan-2.2-i2v-14b")
+        modalities = {s.modality for s in model.supported_signals}
+        assert "first_frame" in modalities
+        assert "reference_image" not in modalities
+
+    def test_boundary_ratio_default_is_0900(self, _register_all):
+        model = get_model_definition("wan-2.2-i2v-14b")
+        param = model.get_param("boundary_ratio")
+        assert param.default == 0.900
+
+    def test_has_first_frame_dropout_rate(self, _register_all):
+        model = get_model_definition("wan-2.2-i2v-14b")
+        param = model.get_param("first_frame_dropout_rate")
+        assert param is not None
+        assert param.default == 0.05
+
+    def test_no_reference_image_modality(self, _register_all):
+        """Verify the old modality name is completely gone."""
+        model = get_model_definition("wan-2.2-i2v-14b")
+        modalities = {s.modality for s in model.supported_signals}
+        assert "reference_image" not in modalities
+
+
+# ---------------------------------------------------------------------------
+# T2V Regression Tests
+# ---------------------------------------------------------------------------
+
+
+class TestT2vModelsUnaffected:
+    """T2V models must not have first_frame or reference_image signals."""
+
+    def test_t2v_models_have_no_first_frame_signal(self, _register_all):
+        for model_id in ["wan-2.2-t2v-14b", "wan-2.1-t2v-14b"]:
+            model = get_model_definition(model_id)
+            modalities = {s.modality for s in model.supported_signals}
+            assert "first_frame" not in modalities
+            assert "reference_image" not in modalities
 
 
 # ---------------------------------------------------------------------------

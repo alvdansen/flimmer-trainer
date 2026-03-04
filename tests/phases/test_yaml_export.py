@@ -51,7 +51,7 @@ def moe_project(register_all_models):
 
 @pytest.fixture
 def i2v_project(register_all_models):
-    """Wan 2.1 I2V project with one unified phase (non-MoE, has reference_image signal)."""
+    """Wan 2.1 I2V project with one unified phase (non-MoE, has first_frame signal)."""
     project = Project.create(name="test_i2v", model_id="wan-2.1-i2v-14b")
     project.add_phase(PhaseConfig(
         phase_type="unified",
@@ -214,16 +214,16 @@ class TestMoeExport:
 
 
 class TestI2vExport:
-    """I2V model YAML export (has reference_image signal)."""
+    """I2V model YAML export (has first_frame signal)."""
 
     def test_signals_block_present(self, i2v_project, tmp_path):
-        """I2V model has reference_image signal -> signals block should appear."""
+        """I2V model has first_frame signal -> signals block should appear."""
         from flimmer.phases.yaml_export import export_yaml
 
         out = export_yaml(i2v_project, tmp_path / "config.yaml")
         data = yaml.safe_load(out.read_text())
         assert "signals" in data
-        assert data["signals"]["reference_image"] is True
+        assert data["signals"]["first_frame"] is True
 
 
 class TestFloatFormatting:
