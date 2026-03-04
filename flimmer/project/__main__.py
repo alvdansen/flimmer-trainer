@@ -177,9 +177,11 @@ def cmd_plan(args: argparse.Namespace) -> None:
 def _plan_resolved(
     project: object, project_data: dict, base_config_path: Path
 ) -> None:
-    """Show the fully resolved training plan by merging base config with overrides."""
-    import tempfile
+    """Show the fully resolved training plan by merging base config with overrides.
 
+    Temp configs are written next to the base config so that relative
+    paths (data_config, model weights) resolve correctly.
+    """
     from flimmer.phases import PhaseStatus
     from flimmer.project.loader import merge_phase_config
 
@@ -190,14 +192,19 @@ def _plan_resolved(
             name = entry.config.display_name or entry.config.phase_type
             print(f"  Phase {i}: {name} [{status}] -- skip")
 
-    # Resolve each pending phase through the training config pipeline
+    # Write temp configs in the same directory as the base config so
+    # relative paths (data_config, model weights) resolve correctly.
+    config_dir = base_config_path.parent
+    temp_files: list[Path] = []
     all_resolved_phases = []
-    with tempfile.TemporaryDirectory() as tmpdir:
+
+    try:
         for i, entry in enumerate(project.phases):
             if entry.status != PhaseStatus.PENDING:
                 continue
 
-            merged_path = Path(tmpdir) / f"phase_{i}.yaml"
+            merged_path = config_dir / f".flimmer_plan_phase_{i}.yaml"
+            temp_files.append(merged_path)
             merge_phase_config(base_config_path, project, i, merged_path)
 
             try:
@@ -210,6 +217,9 @@ def _plan_resolved(
             except Exception as e:
                 name = entry.config.display_name or entry.config.phase_type
                 print(f"\n  Phase {i}: {name} -- ERROR resolving: {e}")
+    finally:
+        for f in temp_files:
+            f.unlink(missing_ok=True)
 
     if all_resolved_phases:
         from flimmer.training.logger import TrainingLogger
