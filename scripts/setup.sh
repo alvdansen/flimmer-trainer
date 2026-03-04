@@ -116,11 +116,37 @@ if [[ -n "$VARIANT" ]]; then
 fi
 
 
-# ── Venv Creation ───────────────────────────────────────────────────
+# ── System Dependencies ─────────────────────────────────────────────
 
 echo ""
 echo "=== Flimmer Setup ==="
 echo ""
+
+# ffmpeg is required for all video operations (split, normalize, extract, etc.)
+if ! command -v ffmpeg &>/dev/null; then
+    echo "ffmpeg not found — installing..."
+    if command -v apt-get &>/dev/null; then
+        apt-get update -qq && apt-get install -y -qq ffmpeg
+    elif command -v brew &>/dev/null; then
+        brew install ffmpeg
+    else
+        echo "WARNING: Could not install ffmpeg automatically."
+        echo "  Install it manually: https://ffmpeg.org/download.html"
+        echo "  Windows: winget install ffmpeg"
+    fi
+
+    if command -v ffmpeg &>/dev/null; then
+        echo "  ✓ ffmpeg installed: $(ffmpeg -version | head -1)"
+    else
+        echo "  WARNING: ffmpeg still not found. Video operations will fail."
+    fi
+    echo ""
+else
+    echo "✓ ffmpeg found: $(ffmpeg -version 2>&1 | head -1)"
+    echo ""
+fi
+
+# ── Venv Creation ───────────────────────────────────────────────────
 
 if [[ -n "${VIRTUAL_ENV:-}" ]]; then
     echo "WARNING: Already inside a virtual environment ($VIRTUAL_ENV)."
