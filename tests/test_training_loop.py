@@ -132,6 +132,7 @@ class MockTrainingConfig:
         self.gradient_checkpointing = False
         self.timestep_sampling = "uniform"
         self.max_train_steps = kwargs.get("max_train_steps", None)
+        self.blocks_to_swap = kwargs.get("blocks_to_swap", 0)
 
 class MockModelConfig:
     boundary_ratio = 0.875
@@ -574,3 +575,124 @@ class TestMaxTrainSteps:
         config = MockConfig(tmp_path, moe=MockMoeConfig(fork_enabled=False))
         orch = TrainingOrchestrator(config, MockModelBackend())
         assert orch._resuming is False
+
+
+# ---------------------------------------------------------------------------
+# Tests: Block swap wiring in training loop (Plan 07-02)
+# ---------------------------------------------------------------------------
+
+class BlockSwapMockBackend(MockModelBackend):
+    """Mock backend with setup_block_swap tracking."""
+
+    def __init__(self):
+        self.setup_block_swap_calls = []
+        self.setup_gradient_checkpointing_calls = []
+
+    def setup_block_swap(self, model, blocks_to_swap):
+        self.setup_block_swap_calls.append({
+            "model": model,
+            "blocks_to_swap": blocks_to_swap,
+        })
+
+    def setup_gradient_checkpointing(self, model):
+        self.setup_gradient_checkpointing_calls.append(model)
+
+
+class TestBlockSwapWiring:
+    """Verify block swap is called at the right integration points in loop.py."""
+
+    def test_block_swap_called_after_initial_model_load(self, tmp_path):
+        """Block swap setup is called after initial model load when blocks_to_swap > 0."""
+        config = MockConfig(tmp_path, moe=MockMoeConfig(fork_enabled=False))
+        config.training.blocks_to_swap = 10
+        config.training.unified_epochs = 1
+        config.save.save_every_n_epochs = 1
+
+        backend = BlockSwapMockBackend()
+        orch = TrainingOrchestrator(config, backend)
+        orch.run(dataset=None)
+
+        # setup_block_swap should be called at least once (at initial model load)
+        assert len(backend.setup_block_swap_calls) >= 1
+        assert backend.setup_block_swap_calls[0]["blocks_to_swap"] == 10
+
+    def test_block_swap_not_called_when_zero(self, tmp_path):
+        """Block swap is NOT called when blocks_to_swap=0 (no-op path)."""
+        config = MockConfig(tmp_path, moe=MockMoeConfig(fork_enabled=False))
+        config.training.blocks_to_swap = 0
+        config.training.unified_epochs = 1
+        config.save.save_every_n_epochs = 1
+
+        backend = BlockSwapMockBackend()
+        orch = TrainingOrchestrator(config, backend)
+        orch.run(dataset=None)
+
+        assert len(backend.setup_block_swap_calls) == 0
+
+    def test_block_swap_called_after_gradient_checkpointing(self, tmp_path):
+        """Block swap setup is called AFTER gradient checkpointing (ordering matters)."""
+        config = MockConfig(tmp_path, moe=MockMoeConfig(fork_enabled=False))
+        config.training.blocks_to_swap = 10
+        config.training.gradient_checkpointing = True
+        config.training.unified_epochs = 1
+        config.save.save_every_n_epochs = 1
+
+        # Track call order
+        call_order = []
+
+        class OrderTrackingBackend(MockModelBackend):
+            def setup_gradient_checkpointing(self, model):
+                call_order.append("gradient_checkpointing")
+
+            def setup_block_swap(self, model, blocks_to_swap):
+                call_order.append("block_swap")
+
+        backend = OrderTrackingBackend()
+        orch = TrainingOrchestrator(config, backend)
+        orch.run(dataset=None)
+
+        # gradient_checkpointing should come before block_swap
+        assert "gradient_checkpointing" in call_order
+        assert "block_swap" in call_order
+        gc_idx = call_order.index("gradient_checkpointing")
+        bs_idx = call_order.index("block_swap")
+        assert gc_idx < bs_idx
+
+    def test_block_swap_called_after_expert_switch(self, tmp_path):
+        """Block swap setup is called after expert switch in _ensure_expert_model."""
+        config = MockConfig(tmp_path)
+        config.training.blocks_to_swap = 10
+        config.training.unified_epochs = 1
+        config.save.save_every_n_epochs = 1
+
+        backend = BlockSwapMockBackend()
+        orch = TrainingOrchestrator(config, backend)
+        orch.run(dataset=None)
+
+        # With MoE config (default), there are expert phases after unified.
+        # Block swap should be called multiple times:
+        # 1. After initial model load
+        # 2. After expert switch(es)
+        # At least 2 calls expected (initial + first expert switch)
+        assert len(backend.setup_block_swap_calls) >= 2
+
+    def test_block_swap_not_called_after_peft_wrapping(self, tmp_path):
+        """Block swap is NOT re-registered after PEFT wrapping in _setup_phase_lora.
+
+        PEFT wrapping preserves base model blocks and their hooks.
+        Only gradient checkpointing is re-applied after PEFT.
+        """
+        config = MockConfig(tmp_path, moe=MockMoeConfig(fork_enabled=False))
+        config.training.blocks_to_swap = 10
+        config.training.gradient_checkpointing = True
+        config.training.unified_epochs = 1
+        config.save.save_every_n_epochs = 1
+
+        backend = BlockSwapMockBackend()
+        orch = TrainingOrchestrator(config, backend)
+        orch.run(dataset=None)
+
+        # With fork_enabled=False, there's 1 phase (unified).
+        # Block swap should be called exactly ONCE (at initial load).
+        # It should NOT be called again after PEFT wrapping.
+        assert len(backend.setup_block_swap_calls) == 1
