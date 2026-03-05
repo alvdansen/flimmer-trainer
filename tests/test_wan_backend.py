@@ -885,7 +885,7 @@ class TestSetupBlockSwap:
         model.blocks = blocks
 
         with patch(
-            "flimmer.training.wan.backend.BlockSwapOffloader"
+            "flimmer.training.wan.block_swap.BlockSwapOffloader"
         ) as MockOffloader:
             backend.setup_block_swap(model, blocks_to_swap=5)
 
@@ -913,7 +913,7 @@ class TestSetupBlockSwap:
         model.blocks = blocks
 
         with patch(
-            "flimmer.training.wan.backend.BlockSwapOffloader"
+            "flimmer.training.wan.block_swap.BlockSwapOffloader"
         ) as MockOffloader:
             with caplog.at_level(logging.WARNING, logger="flimmer.training.wan.backend"):
                 backend.setup_block_swap(model, blocks_to_swap=15)
@@ -936,7 +936,7 @@ class TestSetupBlockSwap:
         peft_model.get_base_model.return_value = base_model
 
         with patch(
-            "flimmer.training.wan.backend.BlockSwapOffloader"
+            "flimmer.training.wan.block_swap.BlockSwapOffloader"
         ) as MockOffloader:
             backend.setup_block_swap(peft_model, blocks_to_swap=5)
 
@@ -972,7 +972,7 @@ class TestSetupBlockSwap:
         model.blocks = blocks
 
         with patch(
-            "flimmer.training.wan.backend.BlockSwapOffloader"
+            "flimmer.training.wan.block_swap.BlockSwapOffloader"
         ):
             backend.setup_block_swap(model, blocks_to_swap=5)
 

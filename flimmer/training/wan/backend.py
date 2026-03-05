@@ -140,6 +140,10 @@ class WanModelBackend:
         # Quantized models are already on GPU and must NOT be .to(device)'d.
         self._is_quantized: bool = False
 
+        # Block swap offloader instance (set by setup_block_swap).
+        # None when block swap is not active (blocks_to_swap=0).
+        self._offloader: Any | None = None
+
     # -- ModelBackend protocol properties --
 
     @property
@@ -491,6 +495,13 @@ class WanModelBackend:
         del new_state, new_state_gpu
         _clean_gpu_memory()
 
+        # Re-prepare block device placement after state_dict swap.
+        # Hooks survive (nn.Module objects are the same), but weight
+        # storage was replaced by assign=True, so we need to re-run
+        # initial placement to ensure swapped blocks are on CPU.
+        if self._offloader is not None:
+            self._offloader.prepare_block_devices(base_model.blocks)
+
         self._current_expert = new_expert
         print(f"  Expert switch complete.")
         return model
@@ -531,6 +542,9 @@ class WanModelBackend:
         _clean_gpu_memory()
 
         # Step 4: Load new expert from disk
+        # NOTE: Block swap hooks are lost because the model was deleted.
+        # The caller (_ensure_expert_model in loop.py) must call
+        # setup_block_swap() on the new model to re-register hooks.
         new_model = self.load_model(config, expert=new_expert)
         print(f"  Expert switch complete.")
         return new_model
@@ -778,6 +792,76 @@ class WanModelBackend:
                 gradient_checkpointing_kwargs={"use_reentrant": False}
             )
             logger.info("Enabled gradient checkpointing with use_reentrant=False")
+
+    def setup_block_swap(self, model: Any, blocks_to_swap: int) -> None:
+        """Register block swap hooks on transformer blocks.
+
+        Must be called AFTER model load AND PEFT wrapping. Hooks are
+        registered on the base model's blocks (unwrapping PEFT if needed).
+
+        For state_dict expert switching: hooks persist (nn.Module objects
+        survive load_state_dict(assign=True)), but device placement must
+        be re-prepared via prepare_block_devices().
+
+        For disk reload expert switching: model is destroyed and recreated,
+        so this method must be called again on the new model.
+
+        Args:
+            model: Loaded model (possibly PEFT-wrapped).
+            blocks_to_swap: Number of blocks to offload to CPU. 0 = no-op.
+        """
+        if blocks_to_swap <= 0:
+            return
+
+        # Unwrap PEFT if needed — hooks go on base model blocks
+        base_model = model.get_base_model() if hasattr(model, "get_base_model") else model
+
+        # Check that the model has transformer blocks
+        if not hasattr(base_model, "blocks"):
+            logger.warning(
+                "Model has no 'blocks' attribute — cannot set up block swap. "
+                "Block swapping is only supported for Wan transformer models."
+            )
+            return
+
+        blocks = base_model.blocks
+        max_swap = len(blocks) - 1
+
+        # Clamp if exceeding block count
+        if blocks_to_swap > max_swap:
+            logger.warning(
+                "blocks_to_swap=%d exceeds maximum (%d blocks - 1 = %d). "
+                "Clamped to %d.",
+                blocks_to_swap,
+                len(blocks),
+                max_swap,
+                max_swap,
+            )
+            blocks_to_swap = max_swap
+
+        # Clean up existing offloader before re-registration
+        if self._offloader is not None:
+            self._offloader.remove_hooks()
+
+        # Lazy import — only needed when block swap is active
+        from flimmer.training.wan.block_swap import BlockSwapOffloader
+
+        import torch
+        device = next(
+            (p.device for p in base_model.parameters()),
+            torch.device("cpu"),
+        )
+
+        self._offloader = BlockSwapOffloader(
+            blocks=blocks,
+            blocks_to_swap=blocks_to_swap,
+            device=device,
+        )
+        logger.info(
+            "Block swap enabled: %d/%d blocks offloaded to CPU",
+            blocks_to_swap,
+            len(blocks),
+        )
 
     def get_noise_schedule(self) -> FlowMatchingSchedule:
         """Return the flow matching noise schedule for Wan.
