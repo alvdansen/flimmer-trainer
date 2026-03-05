@@ -63,7 +63,10 @@ Plans:
   3. Block swap hooks are applied after model load and PEFT wrapping with no changes to the training loop or checkpoint code
   4. Training with block swap enabled produces LoRA checkpoints that load and generate correctly
   5. A Wan 2.2 I2V training run at 480p + rank 16 + fp8 + block swap fits within 24GB VRAM
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 07-01-PLAN.md — BlockSwapOffloader class + blocks_to_swap config field
+- [ ] 07-02-PLAN.md — Backend setup_block_swap() + training loop integration
 
 ### Phase 8: Optimizer Improvements
 **Goal**: Users have additional VRAM savings options through CPU-offloaded optimizer state and memory-efficient optimizer algorithms
@@ -96,6 +99,6 @@ Plans:
 | 4. Documentation | v1.0 | 2/2 | Complete | 2026-03-04 |
 | 5. Training Correctness | v1.1 | 0/1 | Planned | - |
 | 6. Image Training Support | v1.1 | 0/2 | Planned | - |
-| 7. Block Swapping | v1.1 | 0/? | Not started | - |
+| 7. Block Swapping | v1.1 | 0/2 | Planned | - |
 | 8. Optimizer Improvements | v1.1 | 0/? | Not started | - |
 | 9. VRAM Estimation and User Experience | v1.1 | 0/? | Not started | - |
