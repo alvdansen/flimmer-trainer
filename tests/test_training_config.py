@@ -783,6 +783,30 @@ class TestTrainingLoopConfig:
         cfg = TrainingLoopConfig(discrete_flow_shift=5.0)
         assert cfg.discrete_flow_shift == 5.0
 
+    # -- blocks_to_swap --
+
+    def test_default_blocks_to_swap_zero(self):
+        """blocks_to_swap defaults to 0 (opt-in, no swapping)."""
+        assert TrainingLoopConfig().blocks_to_swap == 0
+
+    def test_blocks_to_swap_valid_values(self):
+        """blocks_to_swap accepts valid non-negative integers."""
+        for val in (0, 20, 39):
+            cfg = TrainingLoopConfig(blocks_to_swap=val)
+            assert cfg.blocks_to_swap == val
+
+    def test_blocks_to_swap_rejects_negative(self):
+        """blocks_to_swap must be >= 0 (ge=0 validation)."""
+        with pytest.raises(Exception):
+            TrainingLoopConfig(blocks_to_swap=-1)
+
+    def test_blocks_to_swap_in_serialized_output(self):
+        """blocks_to_swap appears in the serialized config dict."""
+        cfg = TrainingLoopConfig(blocks_to_swap=20)
+        data = cfg.model_dump()
+        assert "blocks_to_swap" in data
+        assert data["blocks_to_swap"] == 20
+
 
 # ====================================================================
 # 8. TestSaveConfig
