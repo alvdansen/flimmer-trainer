@@ -340,3 +340,69 @@ class TestExpandSamples:
         frame_counts = {e.bucket_frames for e in expanded}
         assert 1 in frame_counts
         assert 17 in frame_counts
+
+
+# ---------------------------------------------------------------------------
+# image_repeat in expand_samples
+# ---------------------------------------------------------------------------
+
+class TestImageRepeatExpansion:
+    """Tests for image_repeat parameter in expand_samples."""
+
+    def test_image_repeat_multiplies_image_repeats(self) -> None:
+        """image_repeat=3 triples repeats for TARGET_IMAGE samples."""
+        image = _make_image_sample()
+        expanded = expand_samples([image], image_repeat=3)
+        assert len(expanded) == 1
+        assert expanded[0].repeats == 3
+
+    def test_image_repeat_does_not_affect_video(self) -> None:
+        """image_repeat does NOT change repeats for TARGET_VIDEO samples."""
+        video = _make_video_sample(frame_count=81)
+        expanded = expand_samples(
+            [video],
+            target_frames=[17],
+            image_repeat=5,
+        )
+        for sample in expanded:
+            assert sample.repeats == 1  # unchanged
+
+    def test_image_repeat_default_leaves_unchanged(self) -> None:
+        """image_repeat=1 (default) leaves image repeats at 1."""
+        image = _make_image_sample()
+        expanded = expand_samples([image], image_repeat=1)
+        assert expanded[0].repeats == 1
+
+    def test_image_repeat_multiplies_with_existing_repeats(self) -> None:
+        """image_repeat stacks with dataset-level repeats.
+
+        sample.repeats=2, image_repeat=3 -> expanded.repeats=6
+        """
+        image = DiscoveredSample(
+            stem="photo_rep",
+            target=Path("/data/photo_rep.png"),
+            target_role=SampleRole.TARGET_IMAGE,
+            width=1024,
+            height=768,
+            frame_count=1,
+            repeats=2,
+        )
+        expanded = expand_samples([image], image_repeat=3)
+        assert expanded[0].repeats == 6
+
+    def test_image_repeat_mixed_dataset(self) -> None:
+        """In a mixed dataset, only image samples get multiplied."""
+        video = _make_video_sample(frame_count=81)
+        image = _make_image_sample()
+
+        expanded = expand_samples(
+            [video, image],
+            target_frames=[17],
+            image_repeat=4,
+        )
+
+        video_samples = [e for e in expanded if e.source_stem == "clip_001"]
+        image_samples = [e for e in expanded if e.source_stem == "photo_001"]
+
+        assert all(s.repeats == 1 for s in video_samples)
+        assert all(s.repeats == 4 for s in image_samples)

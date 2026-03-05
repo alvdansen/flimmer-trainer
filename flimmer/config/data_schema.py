@@ -655,6 +655,17 @@ class FlimmerDataConfig(BaseModel):
         default_factory=MetadataConfig,
         description="Dataset metadata and provenance.",
     )
+    image_repeat: int = Field(
+        default=1,
+        ge=1,
+        description=(
+            "Repeat factor for image samples relative to video samples. "
+            "Images are single-frame and train faster, so repeating them "
+            "increases their presence in training batches. "
+            "A value of 5 means each image appears 5x per epoch. "
+            "Multiplies with dataset-level repeats."
+        ),
+    )
 
     @model_validator(mode="after")
     def check_datasets_not_empty(self) -> FlimmerDataConfig:

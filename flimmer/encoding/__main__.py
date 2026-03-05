@@ -138,6 +138,10 @@ def cmd_info(args: argparse.Namespace) -> None:
         print("No samples found. Check your data_config path.")
         return
 
+    # Load data config for image_repeat
+    from flimmer.config.loader import load_data_config as _load_dc_info
+    data_config_info = _load_dc_info(config.data_config)
+
     # Expand
     expanded = expand_samples(
         samples,
@@ -145,6 +149,7 @@ def cmd_info(args: argparse.Namespace) -> None:
         frame_extraction=config.cache.frame_extraction,
         include_head_frame=config.cache.include_head_frame,
         step=config.cache.reso_step,
+        image_repeat=data_config_info.image_repeat,
     )
     print(f"Expanded: {len(expanded)} training samples")
 
@@ -232,6 +237,7 @@ def cmd_cache_latents(args: argparse.Namespace) -> None:
         frame_extraction=config.cache.frame_extraction,
         include_head_frame=config.cache.include_head_frame,
         step=config.cache.reso_step,
+        image_repeat=data_config.image_repeat,
     )
     print(f"Expanded: {len(expanded)} training samples")
 

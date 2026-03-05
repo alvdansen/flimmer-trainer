@@ -939,3 +939,54 @@ class TestJinxSubset:
 
         # Metadata defaults
         assert config.metadata.tags == []
+
+
+# ─── Image Repeat ───
+
+
+class TestImageRepeat:
+    """Tests for the image_repeat field on FlimmerDataConfig."""
+
+    def test_default_is_1(self, tmp_path: Path, tmp_dataset: Path):
+        """image_repeat defaults to 1 (no extra repeats for images)."""
+        config_path = write_config(tmp_path, {
+            "datasets": [{"path": str(tmp_dataset)}],
+        })
+        config = load_data_config(config_path)
+        assert config.image_repeat == 1
+
+    def test_accepts_valid_value(self, tmp_path: Path, tmp_dataset: Path):
+        """image_repeat=5 is accepted and stored correctly."""
+        config_path = write_config(tmp_path, {
+            "datasets": [{"path": str(tmp_dataset)}],
+            "image_repeat": 5,
+        })
+        config = load_data_config(config_path)
+        assert config.image_repeat == 5
+
+    def test_rejects_zero(self, tmp_path: Path, tmp_dataset: Path):
+        """image_repeat=0 is invalid (must be >= 1)."""
+        config_path = write_config(tmp_path, {
+            "datasets": [{"path": str(tmp_dataset)}],
+            "image_repeat": 0,
+        })
+        with pytest.raises(FlimmerConfigError, match="image_repeat"):
+            load_data_config(config_path)
+
+    def test_rejects_negative(self, tmp_path: Path, tmp_dataset: Path):
+        """image_repeat=-1 is invalid (must be >= 1)."""
+        config_path = write_config(tmp_path, {
+            "datasets": [{"path": str(tmp_dataset)}],
+            "image_repeat": -1,
+        })
+        with pytest.raises(FlimmerConfigError, match="image_repeat"):
+            load_data_config(config_path)
+
+    def test_accepts_1(self, tmp_path: Path, tmp_dataset: Path):
+        """image_repeat=1 is the boundary valid value."""
+        config_path = write_config(tmp_path, {
+            "datasets": [{"path": str(tmp_dataset)}],
+            "image_repeat": 1,
+        })
+        config = load_data_config(config_path)
+        assert config.image_repeat == 1

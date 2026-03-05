@@ -235,6 +235,7 @@ def expand_samples(
     frame_extraction: str = "head",
     include_head_frame: bool = False,
     step: int = 16,
+    image_repeat: int = 1,
 ) -> list[ExpandedSample]:
     """Expand a list of DiscoveredSamples into ExpandedSamples.
 
@@ -248,6 +249,10 @@ def expand_samples(
         frame_extraction: How to extract frames: 'head' or 'uniform'.
         include_head_frame: Also extract a 1-frame image sample from each video.
         step: Resolution alignment step in pixels.
+        image_repeat: Repeat multiplier for image samples. Images train faster
+            than multi-frame videos, so this lets users increase their presence
+            in training batches (e.g., image_repeat=5 means each image appears
+            5x per epoch). Multiplies with dataset-level repeats. Default 1.
 
     Returns:
         List of ExpandedSamples, potentially many per input sample.
@@ -266,7 +271,13 @@ def expand_samples(
 
     for sample in samples:
         if sample.target_role == SampleRole.TARGET_IMAGE:
-            expanded.extend(_expand_image_sample(sample, step=step))
+            img_expanded = _expand_image_sample(sample, step=step)
+            if image_repeat > 1:
+                img_expanded = [
+                    s.model_copy(update={"repeats": s.repeats * image_repeat})
+                    for s in img_expanded
+                ]
+            expanded.extend(img_expanded)
         else:
             expanded.extend(_expand_video_sample(
                 sample,
