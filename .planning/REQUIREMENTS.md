@@ -1,100 +1,105 @@
-# Requirements: Flimmer Phase Integration & I2V Support
+# Requirements: Flimmer Low VRAM Training
 
-**Defined:** 2026-03-03
-**Core Value:** Phase system and I2V integration work end-to-end — user can define multi-phase training projects for the full Wan family and run them locally via scripts.
+**Defined:** 2026-03-05
+**Core Value:** Enable Wan 2.2 I2V/T2V LoRA training on 24GB consumer GPUs (RTX 3090/4090) with the same techniques proven in kohya/musubi-tuner.
 
-## v1 Requirements
+## v1.1 Requirements
 
-### Code Integration
+### Training Correctness
 
-- [x] **INTG-01**: Copy dimljus_phases source into `flimmer/phases/` subpackage with relative imports
-- [x] **INTG-02**: Rename all "dimljus" references to "flimmer" (classes, constants, filenames, strings)
-- [x] **INTG-03**: Verify zero `dimljus` references remain via grep
-- [x] **INTG-04**: `import flimmer.phases` succeeds without errors
-- [x] **INTG-05**: Identify and surface genuine code differences between dimljus_phases and existing flimmer code (not name-only diffs) for user decision on which version to keep
+- [x] **FIX-01**: Gradient checkpointing enforces `use_reentrant=False` to prevent silent zero gradients with PEFT LoRA adapters
+- [x] **FIX-02**: PyTorch memory allocator configured with `expandable_segments:True` by default to prevent fragmentation OOMs
 
-### Testing
+### Block Swapping
 
-- [x] **TEST-01**: All existing flimmer-trainer tests pass after integration
-- [x] **TEST-02**: All phase system tests pass under `flimmer/` namespace
-- [x] **TEST-03**: Conftest fixtures properly scoped for registry isolation
+- [ ] **SWAP-01**: Transformer block swapping offloads inactive blocks to CPU during forward/backward passes via PyTorch hooks
+- [ ] **SWAP-02**: Block swap count is configurable via `blocks_to_swap` field in training config
+- [ ] **SWAP-03**: Block swap uses pinned memory and async CUDA streams for efficient CPU<->GPU transfer
+- [ ] **SWAP-04**: Block swap applies after model load and PEFT wrapping (transparent to training loop)
 
-### I2V Backend (Wan 2.1 + 2.2)
+### Mixed Image+Video Dataset
 
-- [x] **I2V-01**: Wan 2.1 I2V model definition registered in phase system (non-MoE, unified phase)
-- [x] **I2V-02**: Wan 2.2 I2V model definition registered in phase system (MoE, expert phases)
-- [x] **I2V-03**: Wan 2.1 I2V variant added to WAN_VARIANTS registry with architecture params
-- [x] **I2V-04**: I2V training backend in `flimmer/training/wan/` with reference image conditioning (serves both 2.1 and 2.2)
-- [x] **I2V-05**: I2V inherits shared code from existing T2V backend (no duplicated loop code)
-- [x] **I2V-06**: I2V backend tests for both variants (mocked, no GPU required)
+- [ ] **IMG-01**: VAE encoder supports single-image target encoding as 1-frame latents
+- [ ] **IMG-02**: Cache pipeline dispatches correctly for `TARGET_IMAGE` role samples
+- [ ] **IMG-03**: `image_repeat` config field controls ratio of stills vs video clips in training batches
+- [ ] **IMG-04**: I2V mode uses image as its own first-frame reference when training on stills (self-referencing)
 
-### Local Run Scripts
+### Optimizer Improvements
 
-- [x] **RUN-01**: Setup script: clone repo, create venv, install deps, verify GPU
-- [x] **RUN-02**: Training launcher script with CLI args for config selection
-- [x] **RUN-03**: Example YAML configs for T2V and I2V training runs
-- [x] **RUN-04**: Scripts work on fresh Linux machine with CUDA/PyTorch
+- [ ] **OPT-01**: Optimizer state CPU offloading via torchao CPUOffloadOptimizer wrapper
+- [ ] **OPT-02**: Adam-Mini optimizer option for 45-50% optimizer state reduction
+- [ ] **OPT-03**: Memory-efficient optimizer selection via `optimizer` config field (adamw8bit, adam_mini, cpu_offload)
 
-### Documentation
+### VRAM Estimation
 
-- [x] **DOC-01**: Update README with phase system overview
-- [x] **DOC-02**: Update docs/ with I2V model support
-- [x] **DOC-03**: Local run scripts documented with usage examples
-- [x] **DOC-04**: Beta caveat prominently displayed for local run scripts
+- [ ] **VRAM-01**: Pre-flight VRAM estimation predicts memory usage for a given config before training starts
+- [ ] **VRAM-02**: VRAM estimation accounts for block swap count, precision, resolution, frame count, and LoRA rank
+- [ ] **VRAM-03**: Clear warning or error when estimated VRAM exceeds available GPU memory
+
+### User Experience
+
+- [ ] **UX-01**: 24GB config templates for T2V and I2V training (RTX 3090/4090 settings)
+- [ ] **UX-02**: Low VRAM training guide documenting settings, tradeoffs, and per-GPU-tier recommendations
+- [ ] **UX-03**: Config templates include recommended block swap counts, resolution, frame counts per GPU tier
 
 ## v2 Requirements
 
-### Registry Sync
+### Advanced Memory
 
-- **SYNC-01**: Automated sync enforcement between MODEL_REGISTRY and WAN_VARIANTS
+- **MEM-01**: Per-GPU VRAM presets (`vram_preset: 24gb`) that auto-tune block swap, precision, resolution
+- **MEM-02**: Tiled VAE encoding for low VRAM encoding stage (separate from training VRAM)
 
-### Run Scripts
+### Hardware Support
 
-- **RUN-05**: Production-hardened run scripts with error recovery and logging
-- **RUN-06**: Cloud deployment scripts (RunPod, Lambda, etc.)
+- **HW-01**: RTX 3090 vs 4090 specific presets (fp8 tensor core availability, PCIe bandwidth)
+- **HW-02**: 16GB GPU support (RTX 4080, RTX 4070 Ti Super)
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| GUI for phase management | CLI-first, GUI deferred |
-| Wan 2.1 T2V modifications | Existing T2V backend works as-is |
-| Cloud deployment scripts | Local-only this milestone |
-| Full local script QA | Explicitly beta — documented as needing further testing |
-| Domain/stack research | User has deep domain expertise |
+| Multi-GPU / distributed training (FSDP/DDP) | Flimmer targets single-GPU. Block swap + quantization achieves 24GB on single GPU. |
+| Dynamic resolution during training | Unpredictable VRAM spikes. Fixed resolution via config. |
+| Automatic block swap count selection | VRAM too context-dependent to auto-detect. Provide estimation tool instead. |
+| FP4 training computation | Experimental, produces quality artifacts. FP8 weights + bf16 compute is the sweet spot. |
+| Model sharding (finer than block level) | Block swapping is the right granularity. Finer sharding adds complexity without benefit. |
+
+## Constraints
+
+- **Development:** Private staging repo (`flimmer-trainer-dev`) -- validate on real hardware before merging to public repo
+- **Testing:** Must validate on RTX 3090/4090 (24GB) before public release
+- **Compatibility:** Must not break existing H100/A100 training workflows
+- **No new required deps:** Block swap is pure PyTorch. torchao and adam-mini are optional behind import guards.
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INTG-01 | Phase 1 | Complete |
-| INTG-02 | Phase 1 | Complete |
-| INTG-03 | Phase 1 | Complete |
-| INTG-04 | Phase 1 | Complete |
-| INTG-05 | Phase 1 | Complete |
-| TEST-01 | Phase 1 | Complete |
-| TEST-02 | Phase 1 | Complete |
-| TEST-03 | Phase 1 | Complete |
-| I2V-01 | Phase 2 | Complete |
-| I2V-02 | Phase 2 | Complete |
-| I2V-03 | Phase 2 | Complete |
-| I2V-04 | Phase 2 | Complete |
-| I2V-05 | Phase 2 | Complete |
-| I2V-06 | Phase 2 | Complete |
-| RUN-01 | Phase 3 | Complete |
-| RUN-02 | Phase 3 | Complete |
-| RUN-03 | Phase 3 | Complete |
-| RUN-04 | Phase 3 | Complete |
-| DOC-01 | Phase 4 | Complete |
-| DOC-02 | Phase 4 | Complete |
-| DOC-03 | Phase 4 | Complete |
-| DOC-04 | Phase 4 | Complete |
+| FIX-01 | Phase 5 | Complete |
+| FIX-02 | Phase 5 | Complete |
+| SWAP-01 | Phase 7 | Pending |
+| SWAP-02 | Phase 7 | Pending |
+| SWAP-03 | Phase 7 | Pending |
+| SWAP-04 | Phase 7 | Pending |
+| IMG-01 | Phase 6 | Pending |
+| IMG-02 | Phase 6 | Pending |
+| IMG-03 | Phase 6 | Pending |
+| IMG-04 | Phase 6 | Pending |
+| OPT-01 | Phase 8 | Pending |
+| OPT-02 | Phase 8 | Pending |
+| OPT-03 | Phase 8 | Pending |
+| VRAM-01 | Phase 9 | Pending |
+| VRAM-02 | Phase 9 | Pending |
+| VRAM-03 | Phase 9 | Pending |
+| UX-01 | Phase 9 | Pending |
+| UX-02 | Phase 9 | Pending |
+| UX-03 | Phase 9 | Pending |
 
 **Coverage:**
-- v1 requirements: 22 total
-- Mapped to phases: 22
+- v1.1 requirements: 19 total
+- Mapped to phases: 19
 - Unmapped: 0
 
 ---
-*Requirements defined: 2026-03-03*
-*Last updated: 2026-03-03 after roadmap creation*
+*Requirements defined: 2026-03-05*
+*Last updated: 2026-03-05 after roadmap creation*

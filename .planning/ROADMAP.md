@@ -1,98 +1,98 @@
-# Roadmap: Flimmer Phase Integration & I2V Support
+# Roadmap: Flimmer Video LoRA Training Toolkit
 
-## Overview
+## Milestones
 
-This milestone integrates the dimljus-phases registry-driven phase system into flimmer-trainer (with full rename), adds the Wan 2.2 I2V training backend, creates self-contained local run scripts for an A6000 machine, and updates documentation. The work flows linearly: integration must land before I2V can build on it, local run scripts are a parallel sub-project, and documentation wraps everything up.
+- ✅ **v1.0 MVP** — Phases 1-4 (shipped 2026-03-05)
+- 🚧 **v1.1 Low VRAM Training** — Phases 5-9 (in progress)
 
 ## Phases
 
-**Phase Numbering:**
-- Integer phases (1, 2, 3): Planned milestone work
-- Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
+<details>
+<summary>✅ v1.0 MVP (Phases 1-4) — SHIPPED 2026-03-05</summary>
 
-Decimal phases appear between their surrounding integers in numeric order.
+- [x] Phase 1: Phase System Integration (3/3 plans) — completed 2026-03-04
+- [x] Phase 2: I2V Backend (4/4 plans) — completed 2026-03-04
+- [x] Phase 3: Local Run Scripts (3/3 plans) — completed 2026-03-04
+- [x] Phase 4: Documentation (2/2 plans) — completed 2026-03-04
 
-- [x] **Phase 1: Phase System Integration** - Copy dimljus_phases into flimmer/phases/, rename all references, surface genuine code diffs, get all tests passing (completed 2026-03-04)
-- [ ] **Phase 2: I2V Backend (Wan 2.1 + 2.2)** - Build the I2V training backend with reference image conditioning for both Wan 2.1 (non-MoE) and Wan 2.2 (MoE), inheriting from existing T2V code
-- [ ] **Phase 3: Local Run Scripts** - Self-contained setup, launcher, and example configs for A6000 training machine
-- [ ] **Phase 4: Documentation** - Update README, docs, and usage examples for phase system, I2V support, and local scripts
+</details>
+
+### v1.1 Low VRAM Training
+
+- [ ] **Phase 5: Training Correctness** - Fix gradient checkpointing and memory allocator before adding new features
+- [ ] **Phase 6: Image Training Support** - Enable mixed stills+video datasets for all users
+- [ ] **Phase 7: Block Swapping** - Offload transformer blocks to CPU to fit 14B models on 24GB GPUs
+- [ ] **Phase 8: Optimizer Improvements** - CPU offloading and memory-efficient optimizers for additional VRAM savings
+- [ ] **Phase 9: VRAM Estimation and User Experience** - Pre-flight memory prediction, 24GB config templates, and training guide
 
 ## Phase Details
 
-### Phase 1: Phase System Integration
-**Goal**: The phase system lives in flimmer/phases/ with zero "dimljus" references, genuine code differences are surfaced for user decision, and the full test suite passes
-**Depends on**: Nothing (first phase)
-**Requirements**: INTG-01, INTG-02, INTG-03, INTG-04, INTG-05, TEST-01, TEST-02, TEST-03
+### Phase 5: Training Correctness
+**Goal**: Training produces correct gradients and avoids fragmentation OOMs regardless of PEFT adapter configuration
+**Depends on**: Phase 4 (v1.0 complete)
+**Requirements**: FIX-01, FIX-02
 **Success Criteria** (what must be TRUE):
-  1. `import flimmer.phases` succeeds and auto-registers all model definitions
-  2. `grep -r "dimljus" flimmer/phases/` returns zero hits (excluding historical attribution comments)
-  3. A report of genuine code differences (not name-only diffs) between dimljus_phases and existing flimmer code is presented to the user with clear options for which version to keep
-  4. Wan 2.1 T2V backend completeness verified — any gaps flagged for Phase 2
-  5. `pytest tests/` passes with all existing flimmer tests AND all migrated phase system tests (registry isolation intact)
-**Plans:** 3/3 plans complete
-
+  1. LoRA adapter parameters receive non-zero gradients during training with gradient checkpointing enabled
+  2. Training runs that previously fragmentation-OOMed at allocation boundaries complete without memory errors
+  3. Existing H100/A100 training workflows produce identical results (no regression)
+**Plans:** 1 plan
 Plans:
-- [x] 01-01-PLAN.md — Copy dimljus_phases source into flimmer/phases/, convert imports, rename all dimljus references
-- [x] 01-02-PLAN.md — Copy test files into tests/phases/, rewrite imports, run full test suite
-- [x] 01-03-PLAN.md — Generate diff report of genuine code differences for user review
+- [ ] 05-01-PLAN.md — Fix gradient checkpointing use_reentrant and CUDA memory allocator config
 
-### Phase 2: I2V Backend (Wan 2.1 + 2.2)
-**Goal**: A user can configure and launch I2V training for both Wan 2.1 (non-MoE) and Wan 2.2 (MoE) through the phase system, with reference image conditioning handled end-to-end
-**Depends on**: Phase 1
-**Requirements**: I2V-01, I2V-02, I2V-03, I2V-04, I2V-05, I2V-06
+### Phase 6: Image Training Support
+**Goal**: Users can train on mixed datasets containing both video clips and still images, with images treated as single-frame training samples
+**Depends on**: Phase 5
+**Requirements**: IMG-01, IMG-02, IMG-03, IMG-04
 **Success Criteria** (what must be TRUE):
-  1. Wan 2.1 I2V (non-MoE) and Wan 2.2 I2V (MoE) model definitions both registered in MODEL_REGISTRY
-  2. Wan 2.1 I2V variant added to WAN_VARIANTS with correct architecture params (non-MoE, I2V channels, single subfolder)
-  3. I2V training backend in flimmer/training/wan/ accepts a reference image and produces conditioning tensors (shared logic for both variants)
-  4. I2V backend shares core training logic with T2V (no duplicated training loop code)
-  5. I2V backend tests for both 2.1 and 2.2 variants pass without GPU (mocked)
-**Plans:** 3 plans
+  1. User can add .jpg/.png files alongside .mp4 clips in their dataset and run `cache-latents` without errors
+  2. Training batches contain a configurable mix of image and video samples controlled by `image_repeat` in the data config
+  3. In I2V mode, single-frame image samples use themselves as the first-frame conditioning input (no separate reference required)
+  4. A dataset with only images trains successfully (edge case: pure stills dataset)
+**Plans**: TBD
 
-Plans:
-- [ ] 02-01-PLAN.md — Add 2.1_i2v variant to WAN_VARIANTS, resolution subtypes to all variants, fix I2V model definitions
-- [ ] 02-02-PLAN.md — Fix hardcoded config repo in load_model(), add first-frame dropout to training loop
-- [ ] 02-03-PLAN.md — Update and add tests for 2.1 I2V variant, modality rename, first-frame dropout
-
-### Phase 3: Local Run Scripts
-**Goal**: A fresh machine can go from git clone to running a training job with a single setup script and launcher, using project-based phase management for multi-phase MoE workflows
-**Depends on**: Phase 1
-**Requirements**: RUN-01, RUN-02, RUN-03, RUN-04
+### Phase 7: Block Swapping
+**Goal**: Users can train Wan 2.2 I2V/T2V LoRA on a 24GB GPU by offloading inactive transformer blocks to CPU during forward/backward passes
+**Depends on**: Phase 5
+**Requirements**: SWAP-01, SWAP-02, SWAP-03, SWAP-04
 **Success Criteria** (what must be TRUE):
-  1. Setup script handles clone, venv creation, dependency installation, and GPU verification in one invocation
-  2. Training launcher accepts a config path argument and starts a training run (T2V or I2V)
-  3. Example YAML configs are provided for both T2V and I2V training scenarios
-  4. Scripts run successfully on a fresh Linux machine with only CUDA and PyTorch pre-installed (no manual steps beyond git clone)
-**Plans:** 3 plans
+  1. User can set `blocks_to_swap: 20` in their training config and training proceeds with reduced VRAM usage
+  2. Block swap transfers use pinned memory and async CUDA streams (no synchronous stalls blocking the training loop)
+  3. Block swap hooks are applied after model load and PEFT wrapping with no changes to the training loop or checkpoint code
+  4. Training with block swap enabled produces LoRA checkpoints that load and generate correctly
+  5. A Wan 2.2 I2V training run at 480p + rank 16 + fp8 + block swap fits within 24GB VRAM
+**Plans**: TBD
 
-Plans:
-- [ ] 03-01-PLAN.md — Create flimmer/project/ module bridging project YAML to training CLI
-- [ ] 03-02-PLAN.md — Create setup.sh and I2V/project example configs
-- [ ] 03-03-PLAN.md — Create prepare.sh and train.sh launcher scripts
-
-### Phase 4: Documentation
-**Goal**: A new user can understand the phase system, configure I2V training, and use local run scripts from the docs alone
-**Depends on**: Phase 1, Phase 2, Phase 3
-**Requirements**: DOC-01, DOC-02, DOC-03, DOC-04
+### Phase 8: Optimizer Improvements
+**Goal**: Users have additional VRAM savings options through CPU-offloaded optimizer state and memory-efficient optimizer algorithms
+**Depends on**: Phase 7
+**Requirements**: OPT-01, OPT-02, OPT-03
 **Success Criteria** (what must be TRUE):
-  1. README includes a phase system overview explaining what it is, how to define phases, and how model definitions work
-  2. docs/ covers Wan 2.2 I2V model support including reference image requirements and example configs
-  3. Local run scripts have documented usage examples showing setup and training launch commands
-  4. Beta caveat is prominently displayed (not buried) in both README and script docs for local run scripts
-**Plans:** 2 plans
+  1. User can set `optimizer: cpu_offload` in their training config to offload optimizer state to CPU via torchao
+  2. User can set `optimizer: adam_mini` for reduced optimizer state memory (45-50% reduction vs AdamW)
+  3. Both new optimizer options work correctly in combination with block swap and fp8 quantization
+**Plans**: TBD
 
-Plans:
-- [ ] 04-01-PLAN.md — Update README with phase system, dual Quick Start, beta caveat, project structure, local scripts link; create LOCAL_SETUP.md
-- [ ] 04-02-PLAN.md — Create I2V_GUIDE.md; update PIPELINES.md, TRAINING_CONFIG_WALKTHROUGH.md, TARGET_SIGNAL_ARCHITECTURE.md with I2V content
+### Phase 9: VRAM Estimation and User Experience
+**Goal**: Users know exactly what settings to use for their GPU tier and get warned before wasting time on configs that will OOM
+**Depends on**: Phase 7, Phase 8
+**Requirements**: VRAM-01, VRAM-02, VRAM-03, UX-01, UX-02, UX-03
+**Success Criteria** (what must be TRUE):
+  1. Running a pre-flight estimation command shows predicted VRAM usage for a given training config before any GPU work starts
+  2. VRAM estimate accounts for block swap count, precision, resolution, frame count, and LoRA rank -- and warns when estimated usage exceeds available GPU memory
+  3. 24GB config templates exist for both T2V and I2V with recommended block swap counts, resolutions, and frame counts
+  4. A low VRAM training guide documents the full optimization stack, tradeoffs, and per-GPU-tier recommendations (24GB, 48GB, 80GB)
+**Plans**: TBD
 
 ## Progress
 
-**Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4
-(Phase 2 and Phase 3 can execute in parallel after Phase 1 completes)
-
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 1. Phase System Integration | 3/3 | Complete    | 2026-03-04 |
-| 2. I2V Backend (Wan 2.1 + 2.2) | 0/3 | Planned | - |
-| 3. Local Run Scripts | 0/3 | Planned | - |
-| 4. Documentation | 0/2 | Planned | - |
+| Phase | Milestone | Plans Complete | Status | Completed |
+|-------|-----------|----------------|--------|-----------|
+| 1. Phase System Integration | v1.0 | 3/3 | Complete | 2026-03-04 |
+| 2. I2V Backend (Wan 2.1 + 2.2) | v1.0 | 4/4 | Complete | 2026-03-04 |
+| 3. Local Run Scripts | v1.0 | 3/3 | Complete | 2026-03-04 |
+| 4. Documentation | v1.0 | 2/2 | Complete | 2026-03-04 |
+| 5. Training Correctness | v1.1 | 0/1 | Planned | - |
+| 6. Image Training Support | v1.1 | 0/? | Not started | - |
+| 7. Block Swapping | v1.1 | 0/? | Not started | - |
+| 8. Optimizer Improvements | v1.1 | 0/? | Not started | - |
+| 9. VRAM Estimation and User Experience | v1.1 | 0/? | Not started | - |
