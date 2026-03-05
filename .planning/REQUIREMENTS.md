@@ -19,10 +19,10 @@
 
 ### Mixed Image+Video Dataset
 
-- [ ] **IMG-01**: VAE encoder supports single-image target encoding as 1-frame latents
-- [ ] **IMG-02**: Cache pipeline dispatches correctly for `TARGET_IMAGE` role samples
-- [ ] **IMG-03**: `image_repeat` config field controls ratio of stills vs video clips in training batches
-- [ ] **IMG-04**: I2V mode uses image as its own first-frame reference when training on stills (self-referencing)
+- [x] **IMG-01**: VAE encoder supports single-image target encoding as 1-frame latents
+- [x] **IMG-02**: Cache pipeline dispatches correctly for `TARGET_IMAGE` role samples
+- [x] **IMG-03**: `image_repeat` config field controls ratio of stills vs video clips in training batches
+- [x] **IMG-04**: I2V mode uses image as its own first-frame reference when training on stills (self-referencing)
 
 ### Optimizer Improvements
 
@@ -81,10 +81,10 @@
 | SWAP-02 | Phase 7 | Pending |
 | SWAP-03 | Phase 7 | Pending |
 | SWAP-04 | Phase 7 | Pending |
-| IMG-01 | Phase 6 | Pending |
-| IMG-02 | Phase 6 | Pending |
-| IMG-03 | Phase 6 | Pending |
-| IMG-04 | Phase 6 | Pending |
+| IMG-01 | Phase 6 | Complete |
+| IMG-02 | Phase 6 | Complete |
+| IMG-03 | Phase 6 | Complete |
+| IMG-04 | Phase 6 | Complete |
 | OPT-01 | Phase 8 | Pending |
 | OPT-02 | Phase 8 | Pending |
 | OPT-03 | Phase 8 | Pending |

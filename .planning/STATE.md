@@ -3,29 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Low VRAM Training
 status: active
-stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-03-05T04:44:45.847Z"
-last_activity: 2026-03-05 — Executed 05-01 (gradient checkpointing + CUDA allocator)
+stopped_at: Completed 06-01-PLAN.md (Phase 6 fully done — both plans complete)
+last_updated: "2026-03-05T04:59:55Z"
+last_activity: 2026-03-05 — Executed 06-01 (image encoding + I2V auto self-referencing)
 progress:
   total_phases: 5
-  completed_phases: 1
-  total_plans: 3
-  completed_plans: 1
----
-
----
-gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: Low VRAM Training
-status: active
-stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-03-05T04:41:17.860Z"
-last_activity: 2026-03-05 — Executed Phase 5 Plan 01 (FIX-01 + FIX-02 training correctness fixes)
-progress:
-  total_phases: 5
-  completed_phases: 1
-  total_plans: 1
-  completed_plans: 1
+  completed_phases: 2
+  total_plans: 4
+  completed_plans: 4
 ---
 
 # Project State
@@ -35,16 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-05)
 
 **Core value:** Complete video LoRA training pipeline — raw footage to trained LoRA checkpoint, now targeting 24GB consumer GPUs
-**Current focus:** Phase 5 — Training Correctness (complete)
+**Current focus:** Phase 6 complete — Image Training Support (all plans done)
 
 ## Current Position
 
-Phase: 5 of 9 (Training Correctness) — v1.1
-Plan: 1 of 1 in current phase (COMPLETE)
-Status: Phase 5 complete. FIX-01 + FIX-02 applied.
-Last activity: 2026-03-05 — Executed 05-01 (gradient checkpointing + CUDA allocator)
+Phase: 6 of 9 (Image Training Support) — v1.1
+Plan: 2 of 2 in current phase (all complete)
+Status: Phase 6 fully complete. Both plans executed (06-01 + 06-02).
+Last activity: 2026-03-05 — Executed 06-01 (image encoding + I2V auto self-referencing)
 
-Progress: [##########] 100% (Phase 5)
+Progress: [████░░░░░░] 40% (v1.1 milestone)
 
 ## Performance Metrics
 
@@ -70,6 +55,8 @@ Progress: [##########] 100% (Phase 5)
 | 04 | P01 | 2min | 2 | 2 |
 | 04 | P02 | 3min | 2 | 4 |
 | 05 | P01 | 3min | 2 | 4 |
+| 06 | P01 | 7min | 2 | 5 |
+| 06 | P02 | 5min | 2 | 11 |
 
 ## Accumulated Context
 
@@ -80,6 +67,8 @@ Progress: [##########] 100% (Phase 5)
 - [v1.1]: torchao and adam-mini optional behind import guards
 - [v1.1]: Phase 6 (image training) independent of Phase 7 (block swap) -- can parallelize
 - [05-01]: FIX-01 use_reentrant=False for PEFT LoRA gradient correctness; FIX-02 expandable_segments before torch import
+- [06-01]: PIL-based image encoding via _encode_image_as_latent, auto_self_reference for I2V on stills, I2V detection via reference.source != "none"
+- [06-02]: Repeat expansion at sampler level (index duplication) -- no extra disk/VRAM. CacheEntry.repeats defaults to 1 for backwards compat.
 
 ### Blockers/Concerns
 
@@ -89,12 +78,14 @@ Progress: [##########] 100% (Phase 5)
 
 ## Session Continuity
 
-Last session: 2026-03-05T04:41:17.858Z
-Stopped at: Completed 05-01-PLAN.md
-Resume file: .planning/phases/06-image-training-support/06-01-PLAN.md
+Last session: 2026-03-05T04:57:55Z
+Stopped at: Completed 06-01-PLAN.md (Phase 6 fully done — both plans complete)
+Resume file: .planning/phases/07-block-swap/07-01-PLAN.md
 
 ## Git Workflow
 
-- **dev remote** (private): `github.com/alvdansen/flimmer-trainer-dev` — all development pushes here
-- **origin remote** (public): `github.com/alvdansen/flimmer-trainer` — releases only
-- Push to `dev` after each phase execution, merge to `origin` when releasing
+- **dev remote** (private): `github.com/alvdansen/flimmer-trainer-dev` — ALL development pushes here
+- **origin remote** (public): `github.com/alvdansen/flimmer-trainer` — tested releases only
+- NEVER push to origin during development — releasing to public is a separate milestone
+- Push to `dev` after each phase execution
+- Release cycle: develop → test on hardware → validate → then push to `origin`
