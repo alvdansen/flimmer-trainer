@@ -79,6 +79,9 @@ scheduler:
 training:
   mixed_precision: bf16
   base_model_precision: fp8                # fp8 (8-bit, saves ~14GB) | bf16 | fp8_scaled (4-bit NF4, saves ~21GB)
+                                           # NOTE: fp8 is effectively required for I2V at 720p on 80GB GPUs.
+                                           # I2V's 36-channel input uses ~2.25x the VRAM of T2V's 16 channels.
+                                           # See docs/I2V_GUIDE.md#vram-requirements for details.
   gradient_checkpointing: true
   seed: 42
 

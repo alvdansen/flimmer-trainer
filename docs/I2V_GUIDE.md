@@ -82,6 +82,41 @@ bash scripts/setup.sh --variant 2.2_i2v
 
 ---
 
+## VRAM Requirements
+
+I2V training uses significantly more VRAM than T2V due to the 36-channel input (vs 16 channels for T2V). The extra 20 channels carry the first-frame conditioning through every transformer block, roughly doubling activation memory.
+
+### Wan 2.2 I2V on H100 80GB
+
+| Resolution | Max frames | Base precision | LoRA rank | Fits? |
+|------------|-----------|----------------|-----------|-------|
+| 720p | 81 | bf16 | 16 | No |
+| 720p | 81 | fp8 | 16 | Yes |
+| 720p | 81 | fp8 | 32 | No |
+| 720p | 49 | fp8 | 32 | Likely |
+| 480p | 81 | bf16 | 16 | Likely |
+| 480p | 81 | fp8 | 32 | Yes |
+
+**Key takeaways:**
+
+- **fp8 quantization is effectively required for I2V at 720p.** T2V fits at 720p with bf16 because 16 channels is much lighter. I2V's 36 channels push past 80GB without quantization.
+- **LoRA rank 16 is the safe default for I2V.** Rank 32 works for T2V at 720p but OOMs for I2V at the same resolution. If you need higher rank, reduce resolution or max frame count.
+- **Resolution × frames × rank all compound.** Doubling any one of these roughly doubles activation memory. The 2.25x channel multiplier from I2V makes the headroom much tighter than T2V.
+
+### Comparison with T2V
+
+For context, T2V (16 channels) trains comfortably at 720p/81 frames with bf16 base weights and rank 16 on H100 80GB — no quantization needed. The same dataset at the same resolution requires fp8 for I2V.
+
+If you're hitting OOM during I2V training, try these fixes in order:
+
+1. **Set `base_model_precision: fp8`** — saves ~14GB, no quality impact (frozen weights only)
+2. **Lower LoRA rank** — rank 16 is a good default; rank 32+ needs reduced resolution
+3. **Cap frame count** — remove 81-frame clips or limit `max_frames` in your data config
+4. **Reduce resolution** — 480p uses ~2x less VRAM than 720p
+5. **Use `fp8_scaled`** — saves ~21GB (4-bit NF4), more aggressive but still frozen-weight-only
+
+---
+
 ## Preparing First Frames
 
 First frames are extracted from each training clip. The model learns to generate video that continues from this frame.

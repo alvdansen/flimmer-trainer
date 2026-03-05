@@ -58,10 +58,10 @@ base_config: ./flimmer_train.yaml
 # mid-project would invalidate the checkpoint chain.
 
 run_level_params:
-  lora_rank: 16
-  lora_alpha: 16
+  lora_rank: 16                            # I2V max safe rank at 720p/81 frames on 80GB GPUs.
+  lora_alpha: 16                           # Rank 32 OOMs at 720p — reduce resolution or frames first.
   mixed_precision: bf16
-  base_model_precision: fp8
+  base_model_precision: fp8                # Required for I2V at 720p. See docs/I2V_GUIDE.md#vram-requirements.
 
 
 # ── Phases (execute in order) ──────────────────────────────────────
