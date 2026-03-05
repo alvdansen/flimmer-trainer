@@ -553,3 +553,134 @@ class TestBuildCacheManifestReference:
         ref_entries = [e for e in manifest.entries if e.reference_file is not None]
         assert len(ref_entries) == 1
         assert ref_entries[0].reference_source_path == str(ref_img)
+
+
+# ---------------------------------------------------------------------------
+# CacheEntry.repeats field
+# ---------------------------------------------------------------------------
+
+class TestCacheEntryRepeats:
+    """Tests for the repeats field on CacheEntry."""
+
+    def test_repeats_default_is_1(self) -> None:
+        """CacheEntry.repeats defaults to 1 (backwards-compatible)."""
+        entry = CacheEntry(
+            sample_id="clip_001_81x480x848",
+            source_path="/data/clip.mp4",
+            source_mtime=0,
+            source_size=0,
+        )
+        assert entry.repeats == 1
+
+    def test_repeats_stored_when_set(self) -> None:
+        """CacheEntry stores repeats when explicitly set."""
+        entry = CacheEntry(
+            sample_id="clip_001_81x480x848",
+            source_path="/data/clip.mp4",
+            source_mtime=0,
+            source_size=0,
+            repeats=5,
+        )
+        assert entry.repeats == 5
+
+    def test_backwards_compatible_manifest_without_repeats(self, tmp_path: Path) -> None:
+        """Loading a manifest JSON that lacks repeats field defaults to 1."""
+        import json
+        manifest_data = {
+            "format_version": 1,
+            "vae_id": "test",
+            "text_encoder_id": "",
+            "dtype": "bf16",
+            "entries": [{
+                "sample_id": "old_entry",
+                "source_path": "/old.mp4",
+                "source_mtime": 0.0,
+                "source_size": 0,
+                "latent_file": "latents/old.safetensors",
+                "bucket_key": "848x480x81",
+            }],
+        }
+        manifest_path = tmp_path / "cache_manifest.json"
+        with open(manifest_path, "w") as f:
+            json.dump(manifest_data, f)
+
+        loaded = load_cache_manifest(tmp_path)
+        assert loaded.entries[0].repeats == 1
+
+
+# ---------------------------------------------------------------------------
+# build_cache_manifest: repeats propagation
+# ---------------------------------------------------------------------------
+
+class TestBuildCacheManifestRepeats:
+    """Tests for build_cache_manifest populating CacheEntry.repeats."""
+
+    def test_propagates_repeats_from_sample(self, tmp_path: Path) -> None:
+        """build_cache_manifest sets CacheEntry.repeats from ExpandedSample.repeats."""
+        target = tmp_path / "clip.mp4"
+        target.write_bytes(b"\x00")
+
+        sample = ExpandedSample(
+            sample_id="clip_81x480x848",
+            source_stem="clip",
+            target=target,
+            target_role=SampleRole.TARGET_VIDEO,
+            bucket_width=848,
+            bucket_height=480,
+            bucket_frames=81,
+            repeats=3,
+        )
+
+        manifest = build_cache_manifest([sample], tmp_path)
+        assert manifest.entries[0].repeats == 3
+
+    def test_default_repeats_1(self, tmp_path: Path) -> None:
+        """ExpandedSample with repeats=1 produces CacheEntry.repeats=1."""
+        target = tmp_path / "clip.mp4"
+        target.write_bytes(b"\x00")
+
+        sample = ExpandedSample(
+            sample_id="clip_81x480x848",
+            source_stem="clip",
+            target=target,
+            target_role=SampleRole.TARGET_VIDEO,
+            bucket_width=848,
+            bucket_height=480,
+            bucket_frames=81,
+            repeats=1,
+        )
+
+        manifest = build_cache_manifest([sample], tmp_path)
+        assert manifest.entries[0].repeats == 1
+
+    def test_mixed_repeats(self, tmp_path: Path) -> None:
+        """Different samples with different repeats are propagated correctly."""
+        target = tmp_path / "clip.mp4"
+        target.write_bytes(b"\x00")
+
+        samples = [
+            ExpandedSample(
+                sample_id="clip_81x480x848",
+                source_stem="clip",
+                target=target,
+                target_role=SampleRole.TARGET_VIDEO,
+                bucket_width=848,
+                bucket_height=480,
+                bucket_frames=81,
+                repeats=1,
+            ),
+            ExpandedSample(
+                sample_id="img_1x768x1024",
+                source_stem="img",
+                target=target,
+                target_role=SampleRole.TARGET_IMAGE,
+                bucket_width=1024,
+                bucket_height=768,
+                bucket_frames=1,
+                repeats=5,
+            ),
+        ]
+
+        manifest = build_cache_manifest(samples, tmp_path)
+        assert manifest.entries[0].repeats == 1
+        assert manifest.entries[1].repeats == 5

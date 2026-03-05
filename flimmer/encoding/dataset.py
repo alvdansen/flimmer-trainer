@@ -161,6 +161,19 @@ class CachedLatentDataset:
         """The cache manifest this dataset was built from."""
         return self._manifest
 
+    def get_repeats(self, index: int) -> int:
+        """Get the repeat count for a sample by index.
+
+        Returns how many times this sample should appear per epoch in the
+        sampler. Default is 1. Used by BucketBatchSampler to expand indices.
+        """
+        return self._entries[index].repeats
+
+    @property
+    def repeats(self) -> list[int]:
+        """Repeat count for each sample index (for sampler construction)."""
+        return [e.repeats for e in self._entries]
+
 
 # ---------------------------------------------------------------------------
 # Batch sampler
@@ -204,10 +217,13 @@ class BucketBatchSampler:
         self._drop_last = drop_last
         self._rng = random.Random(seed)
 
-        # Group indices by bucket key
+        # Group indices by bucket key, expanding by repeats.
+        # A sample with repeats=3 appears 3 times in its bucket's index list,
+        # so it gets picked ~3x per epoch when the sampler iterates.
         self._bucket_indices: dict[str, list[int]] = {}
         for idx, key in enumerate(dataset.bucket_keys):
-            self._bucket_indices.setdefault(key, []).append(idx)
+            repeat_count = dataset.get_repeats(idx)
+            self._bucket_indices.setdefault(key, []).extend([idx] * repeat_count)
 
     def __iter__(self):
         """Yield batches of indices, one bucket at a time."""

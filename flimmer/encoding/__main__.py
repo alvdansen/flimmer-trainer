@@ -138,9 +138,10 @@ def cmd_info(args: argparse.Namespace) -> None:
         print("No samples found. Check your data_config path.")
         return
 
-    # Load data config for image_repeat
+    # Load data config for image_repeat and I2V detection
     from flimmer.config.loader import load_data_config as _load_dc_info
     data_config_info = _load_dc_info(config.data_config)
+    is_i2v_info = data_config_info.controls.images.reference.source != "none"
 
     # Expand
     expanded = expand_samples(
@@ -150,6 +151,7 @@ def cmd_info(args: argparse.Namespace) -> None:
         include_head_frame=config.cache.include_head_frame,
         step=config.cache.reso_step,
         image_repeat=data_config_info.image_repeat,
+        auto_self_reference=is_i2v_info,
     )
     print(f"Expanded: {len(expanded)} training samples")
 
@@ -222,6 +224,11 @@ def cmd_cache_latents(args: argparse.Namespace) -> None:
             print(f"Auto-extracted {count} first-frame references for I2V")
             print()
 
+    # Determine if I2V auto self-referencing should be enabled.
+    # Any reference source other than "none" means I2V mode — image samples
+    # should automatically use themselves as first-frame conditioning.
+    is_i2v = data_config.controls.images.reference.source != "none"
+
     # Discover from actual dataset paths in data config
     samples, _ = _discover_from_config(config.data_config)
     print(f"Discovered: {len(samples)} source samples")
@@ -238,6 +245,7 @@ def cmd_cache_latents(args: argparse.Namespace) -> None:
         include_head_frame=config.cache.include_head_frame,
         step=config.cache.reso_step,
         image_repeat=data_config.image_repeat,
+        auto_self_reference=is_i2v,
     )
     print(f"Expanded: {len(expanded)} training samples")
 

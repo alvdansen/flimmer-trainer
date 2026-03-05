@@ -281,3 +281,113 @@ class TestCollateCachedBatch:
         ]
         result = collate_cached_batch(batch)
         assert result["latent"] is None
+
+
+# ---------------------------------------------------------------------------
+# Repeats support in CachedLatentDataset + BucketBatchSampler
+# ---------------------------------------------------------------------------
+
+def _make_manifest_with_repeats() -> CacheManifest:
+    """Create a manifest with entries having different repeats."""
+    entries = [
+        CacheEntry(
+            sample_id="video_a_81x480x848",
+            source_path="/a.mp4",
+            source_mtime=1.0,
+            source_size=100,
+            latent_file="latents/a.safetensors",
+            bucket_key="848x480x81",
+            repeats=1,
+        ),
+        CacheEntry(
+            sample_id="video_b_81x480x848",
+            source_path="/b.mp4",
+            source_mtime=2.0,
+            source_size=200,
+            latent_file="latents/b.safetensors",
+            bucket_key="848x480x81",
+            repeats=1,
+        ),
+        CacheEntry(
+            sample_id="img_c_1x768x1024",
+            source_path="/c.png",
+            source_mtime=3.0,
+            source_size=300,
+            latent_file="latents/c.safetensors",
+            bucket_key="1024x768x1",
+            repeats=3,
+        ),
+    ]
+    return CacheManifest(entries=entries)
+
+
+class TestCachedLatentDatasetRepeats:
+    """Tests for repeats access on CachedLatentDataset."""
+
+    def test_get_repeats(self, tmp_path: Path) -> None:
+        """get_repeats returns correct repeat count for each index."""
+        manifest = _make_manifest_with_repeats()
+        dataset = CachedLatentDataset(tmp_path, manifest)
+        assert dataset.get_repeats(0) == 1
+        assert dataset.get_repeats(1) == 1
+        assert dataset.get_repeats(2) == 3
+
+    def test_repeats_property(self, tmp_path: Path) -> None:
+        """repeats property returns list of repeat counts."""
+        manifest = _make_manifest_with_repeats()
+        dataset = CachedLatentDataset(tmp_path, manifest)
+        assert dataset.repeats == [1, 1, 3]
+
+
+class TestBucketBatchSamplerRepeats:
+    """Tests for BucketBatchSampler respecting repeats."""
+
+    def test_default_repeats_same_behavior(self, tmp_path: Path) -> None:
+        """All repeats=1 produces identical behavior to before (regression)."""
+        manifest = _make_manifest(5, "848x480x81")
+        dataset = CachedLatentDataset(tmp_path, manifest)
+        sampler = BucketBatchSampler(dataset, batch_size=1, shuffle=False)
+
+        batches = list(sampler)
+        assert len(batches) == 5  # No expansion, same as before
+
+    def test_repeats_expand_indices(self, tmp_path: Path) -> None:
+        """Sample with repeats=3 appears 3 times in its bucket."""
+        manifest = _make_manifest_with_repeats()
+        dataset = CachedLatentDataset(tmp_path, manifest)
+        sampler = BucketBatchSampler(dataset, batch_size=1, shuffle=False)
+
+        # Bucket 848x480x81: 2 samples * 1 repeat = 2 indices
+        # Bucket 1024x768x1: 1 sample * 3 repeats = 3 indices
+        # Total: 5 batches (batch_size=1)
+        batches = list(sampler)
+        assert len(batches) == 5
+
+    def test_bucket_sizes_reflect_expanded_counts(self, tmp_path: Path) -> None:
+        """bucket_sizes reflects repeated counts, not raw counts."""
+        manifest = _make_manifest_with_repeats()
+        dataset = CachedLatentDataset(tmp_path, manifest)
+        sampler = BucketBatchSampler(dataset, batch_size=1, shuffle=False)
+
+        sizes = sampler.bucket_sizes
+        assert sizes["848x480x81"] == 2   # 2 * 1
+        assert sizes["1024x768x1"] == 3   # 1 * 3
+
+    def test_len_reflects_expanded_count(self, tmp_path: Path) -> None:
+        """__len__ correctly reflects total batch count with repeats."""
+        manifest = _make_manifest_with_repeats()
+        dataset = CachedLatentDataset(tmp_path, manifest)
+        sampler = BucketBatchSampler(dataset, batch_size=1, shuffle=False)
+
+        # 2 + 3 = 5 total indices, batch_size=1 -> 5 batches
+        assert len(sampler) == 5
+
+    def test_repeated_index_appears_multiple_times(self, tmp_path: Path) -> None:
+        """Index of a sample with repeats=3 appears 3 times in iteration."""
+        manifest = _make_manifest_with_repeats()
+        dataset = CachedLatentDataset(tmp_path, manifest)
+        sampler = BucketBatchSampler(dataset, batch_size=1, shuffle=False)
+
+        all_indices = [idx for batch in sampler for idx in batch]
+        # Index 2 (img_c with repeats=3) should appear 3 times
+        assert all_indices.count(2) == 3

@@ -227,6 +227,14 @@ class CacheEntry(BaseModel):
     bucket_key: str = ""
     """Bucket key for this sample ('{W}x{H}x{F}')."""
 
+    repeats: int = Field(
+        default=1,
+        ge=1,
+        description="Per-epoch repeat count for this sample (image_repeat * source repeats).",
+    )
+    """How many times this sample appears per epoch in the sampler.
+    Defaults to 1 for backwards compatibility with existing manifests."""
+
     @property
     def has_latent(self) -> bool:
         """True if latent encoding is cached."""

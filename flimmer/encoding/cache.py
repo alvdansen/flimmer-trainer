@@ -185,6 +185,7 @@ def build_cache_manifest(
             caption_source_path=caption_src,
             reference_source_path=ref_src,
             bucket_key=sample.bucket_key,
+            repeats=sample.repeats,
         ))
 
     return CacheManifest(
