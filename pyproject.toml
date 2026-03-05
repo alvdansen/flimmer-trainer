@@ -66,6 +66,8 @@ all = [
 dev = [
     "pytest>=7.0",
     "pytest-tmp-files>=0.0.2",
+    "numpy>=1.24",
+    "Pillow>=9.0",
 ]
 
 [tool.pytest.ini_options]
