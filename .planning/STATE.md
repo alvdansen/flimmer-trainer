@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Low VRAM Training
 status: active
-stopped_at: Phase 5 reverted, starting Phase 6 execution
-last_updated: "2026-03-05T04:32:00Z"
-last_activity: 2026-03-05 — Reverted Phase 5 code (FIX-01, FIX-02) to start Phase 6 clean
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-03-05T04:41:17.860Z"
+last_activity: 2026-03-05 — Executed Phase 5 Plan 01 (FIX-01 + FIX-02 training correctness fixes)
 progress:
   total_phases: 5
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  completed_phases: 1
+  total_plans: 1
+  completed_plans: 1
 ---
 
 # Project State
@@ -20,16 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-05)
 
 **Core value:** Complete video LoRA training pipeline — raw footage to trained LoRA checkpoint, now targeting 24GB consumer GPUs
-**Current focus:** Phase 6 — Image Training Support
+**Current focus:** Phase 5 — Training Correctness (complete)
 
 ## Current Position
 
-Phase: 6 of 9 (Image Training Support) — v1.1
-Plan: 0 of 2 in current phase
-Status: Executing Phase 6 (Phase 5 code reverted, will re-execute later)
-Last activity: 2026-03-05 — Reverted Phase 5 code, starting Phase 6
+Phase: 5 of 9 (Training Correctness) — v1.1
+Plan: 1 of 1 in current phase (COMPLETE)
+Status: Phase 5 complete. FIX-01 + FIX-02 applied.
+Last activity: 2026-03-05 — Executed 05-01 (gradient checkpointing + CUDA allocator)
 
-Progress: [░░░░░░░░░░] 0% (Phase 6)
+Progress: [##########] 100% (Phase 5)
 
 ## Performance Metrics
 
@@ -54,7 +54,7 @@ Progress: [░░░░░░░░░░] 0% (Phase 6)
 | 03 | P03 | 2min | 2 | 2 |
 | 04 | P01 | 2min | 2 | 2 |
 | 04 | P02 | 3min | 2 | 4 |
-| 05 | P01 | 3min | 2 | 4 | (reverted)
+| 05 | P01 | 3min | 2 | 4 |
 
 ## Accumulated Context
 
@@ -64,18 +64,18 @@ Progress: [░░░░░░░░░░] 0% (Phase 6)
 - [v1.1]: Block swap via native PyTorch hooks, no new required deps
 - [v1.1]: torchao and adam-mini optional behind import guards
 - [v1.1]: Phase 6 (image training) independent of Phase 7 (block swap) -- can parallelize
-- [05-01]: (REVERTED) Phase 5 code reverted — will re-execute after Phase 6
+- [05-01]: FIX-01 use_reentrant=False for PEFT LoRA gradient correctness; FIX-02 expandable_segments before torch import
 
 ### Blockers/Concerns
 
-- Must verify current gradient checkpointing `use_reentrant` mode before any new features (FIX-01) — Phase 5 reverted, will re-apply
+- (RESOLVED) FIX-01 and FIX-02 applied in Phase 5 Plan 01
 - Block swap + PEFT + bitsandbytes three-way interaction untested in Flimmer
 - Need RTX 3090/4090 hardware access for empirical VRAM validation (Phase 9)
 
 ## Session Continuity
 
-Last session: 2026-03-05T04:32:00Z
-Stopped at: Phase 5 reverted, Phase 6 planned, ready to execute
+Last session: 2026-03-05T04:41:17.858Z
+Stopped at: Completed 05-01-PLAN.md
 Resume file: .planning/phases/06-image-training-support/06-01-PLAN.md
 
 ## Git Workflow
