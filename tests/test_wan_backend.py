@@ -679,22 +679,38 @@ class TestLoadModel:
 # ---------------------------------------------------------------------------
 
 class TestSetupGradientCheckpointing:
-    """setup_gradient_checkpointing delegates to the model's own method."""
+    """setup_gradient_checkpointing delegates to the model's own method.
+
+    FIX-01: The diffusers path (enable_gradient_checkpointing) already
+    defaults to use_reentrant=False internally. The transformers fallback
+    (gradient_checkpointing_enable) must be passed the kwarg explicitly
+    to prevent zero gradients with PEFT LoRA adapters.
+    """
 
     def test_calls_enable_gradient_checkpointing(self):
-        """If the model exposes enable_gradient_checkpointing(), call it."""
+        """If the model exposes enable_gradient_checkpointing(), call it.
+
+        The diffusers API already defaults to use_reentrant=False internally,
+        so no kwargs are needed on this path.
+        """
         backend = _make_t2v_backend()
         mock_model = MagicMock(spec=["enable_gradient_checkpointing"])
         backend.setup_gradient_checkpointing(mock_model)
         mock_model.enable_gradient_checkpointing.assert_called_once()
 
     def test_falls_back_to_gradient_checkpointing_enable(self):
-        """Older HuggingFace models use gradient_checkpointing_enable() instead."""
+        """Older HuggingFace models use gradient_checkpointing_enable() instead.
+
+        FIX-01: This path MUST pass gradient_checkpointing_kwargs with
+        use_reentrant=False to prevent zero gradients with PEFT LoRA.
+        """
         backend = _make_t2v_backend()
         # MagicMock without the newer method — simulate older API
         mock_model = MagicMock(spec=["gradient_checkpointing_enable"])
         backend.setup_gradient_checkpointing(mock_model)
-        mock_model.gradient_checkpointing_enable.assert_called_once()
+        mock_model.gradient_checkpointing_enable.assert_called_once_with(
+            gradient_checkpointing_kwargs={"use_reentrant": False}
+        )
 
     def test_no_error_if_model_has_neither_method(self):
         """Models without either method should be silently skipped.
@@ -720,6 +736,24 @@ class TestSetupGradientCheckpointing:
         backend.setup_gradient_checkpointing(mock_model)
         mock_model.enable_gradient_checkpointing.assert_called_once()
         mock_model.gradient_checkpointing_enable.assert_not_called()
+
+    def test_logs_info_when_checkpointing_enabled(self, caplog):
+        """Info log should mention use_reentrant=False for the diffusers path."""
+        import logging
+        backend = _make_t2v_backend()
+        mock_model = MagicMock(spec=["enable_gradient_checkpointing"])
+        with caplog.at_level(logging.INFO, logger="flimmer.training.wan.backend"):
+            backend.setup_gradient_checkpointing(mock_model)
+        assert any("use_reentrant=False" in msg for msg in caplog.messages)
+
+    def test_logs_info_for_transformers_fallback(self, caplog):
+        """Info log should mention use_reentrant=False for the transformers fallback path."""
+        import logging
+        backend = _make_t2v_backend()
+        mock_model = MagicMock(spec=["gradient_checkpointing_enable"])
+        with caplog.at_level(logging.INFO, logger="flimmer.training.wan.backend"):
+            backend.setup_gradient_checkpointing(mock_model)
+        assert any("use_reentrant=False" in msg for msg in caplog.messages)
 
 
 # ---------------------------------------------------------------------------
