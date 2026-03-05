@@ -12,9 +12,9 @@
 
 ### Block Swapping
 
-- [ ] **SWAP-01**: Transformer block swapping offloads inactive blocks to CPU during forward/backward passes via PyTorch hooks
-- [ ] **SWAP-02**: Block swap count is configurable via `blocks_to_swap` field in training config
-- [ ] **SWAP-03**: Block swap uses pinned memory and async CUDA streams for efficient CPU<->GPU transfer
+- [x] **SWAP-01**: Transformer block swapping offloads inactive blocks to CPU during forward/backward passes via PyTorch hooks
+- [x] **SWAP-02**: Block swap count is configurable via `blocks_to_swap` field in training config
+- [x] **SWAP-03**: Block swap uses pinned memory and async CUDA streams for efficient CPU<->GPU transfer
 - [ ] **SWAP-04**: Block swap applies after model load and PEFT wrapping (transparent to training loop)
 
 ### Mixed Image+Video Dataset
@@ -77,9 +77,9 @@
 |-------------|-------|--------|
 | FIX-01 | Phase 5 | Complete |
 | FIX-02 | Phase 5 | Complete |
-| SWAP-01 | Phase 7 | Pending |
-| SWAP-02 | Phase 7 | Pending |
-| SWAP-03 | Phase 7 | Pending |
+| SWAP-01 | Phase 7 | Complete |
+| SWAP-02 | Phase 7 | Complete |
+| SWAP-03 | Phase 7 | Complete |
 | SWAP-04 | Phase 7 | Pending |
 | IMG-01 | Phase 6 | Complete |
 | IMG-02 | Phase 6 | Complete |

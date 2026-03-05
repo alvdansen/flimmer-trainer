@@ -867,6 +867,166 @@ class TestRegistryIntegration:
 
 
 # ---------------------------------------------------------------------------
+# setup_block_swap
+# ---------------------------------------------------------------------------
+
+class TestSetupBlockSwap:
+    """setup_block_swap() manages BlockSwapOffloader lifecycle on the backend."""
+
+    def test_creates_offloader_when_blocks_gt_zero(self):
+        """setup_block_swap with blocks_to_swap > 0 creates an offloader."""
+        torch = pytest.importorskip("torch")
+        backend = _make_t2v_backend()
+
+        # Create a fake model with blocks attribute
+        model = MagicMock()
+        model.get_base_model.return_value = model
+        blocks = torch.nn.ModuleList([torch.nn.Linear(4, 4) for _ in range(10)])
+        model.blocks = blocks
+
+        with patch(
+            "flimmer.training.wan.backend.BlockSwapOffloader"
+        ) as MockOffloader:
+            backend.setup_block_swap(model, blocks_to_swap=5)
+
+        MockOffloader.assert_called_once()
+        assert backend._offloader is not None
+
+    def test_noop_when_blocks_zero(self):
+        """setup_block_swap with blocks_to_swap=0 does nothing (no offloader)."""
+        backend = _make_t2v_backend()
+        model = MagicMock()
+
+        backend.setup_block_swap(model, blocks_to_swap=0)
+
+        assert backend._offloader is None
+
+    def test_clamps_blocks_exceeding_count_and_logs(self, caplog):
+        """setup_block_swap clamps blocks_to_swap > num_blocks and logs warning."""
+        torch = pytest.importorskip("torch")
+        import logging
+
+        backend = _make_t2v_backend()
+        model = MagicMock()
+        model.get_base_model.return_value = model
+        blocks = torch.nn.ModuleList([torch.nn.Linear(4, 4) for _ in range(10)])
+        model.blocks = blocks
+
+        with patch(
+            "flimmer.training.wan.backend.BlockSwapOffloader"
+        ) as MockOffloader:
+            with caplog.at_level(logging.WARNING, logger="flimmer.training.wan.backend"):
+                backend.setup_block_swap(model, blocks_to_swap=15)
+
+        # Should clamp to 9 (10 blocks - 1)
+        call_kwargs = MockOffloader.call_args
+        assert call_kwargs[1]["blocks_to_swap"] == 9 or call_kwargs[0][1] == 9
+        assert any("clamp" in msg.lower() or "exceed" in msg.lower() for msg in caplog.messages)
+
+    def test_unwraps_peft_model(self):
+        """setup_block_swap unwraps PEFT model via get_base_model()."""
+        torch = pytest.importorskip("torch")
+        backend = _make_t2v_backend()
+
+        base_model = MagicMock()
+        blocks = torch.nn.ModuleList([torch.nn.Linear(4, 4) for _ in range(10)])
+        base_model.blocks = blocks
+
+        peft_model = MagicMock()
+        peft_model.get_base_model.return_value = base_model
+
+        with patch(
+            "flimmer.training.wan.backend.BlockSwapOffloader"
+        ) as MockOffloader:
+            backend.setup_block_swap(peft_model, blocks_to_swap=5)
+
+        # Should pass the base_model's blocks, not the peft wrapper's
+        call_args = MockOffloader.call_args
+        assert call_args[1]["blocks"] is blocks or call_args[0][0] is blocks
+
+    def test_no_blocks_attribute_logs_and_returns(self, caplog):
+        """Model without blocks attribute logs warning and returns."""
+        import logging
+
+        backend = _make_t2v_backend()
+        model = MagicMock(spec=[])  # No blocks attribute
+
+        with caplog.at_level(logging.WARNING, logger="flimmer.training.wan.backend"):
+            backend.setup_block_swap(model, blocks_to_swap=5)
+
+        assert backend._offloader is None
+        assert any("blocks" in msg.lower() for msg in caplog.messages)
+
+    def test_removes_existing_offloader_before_creating_new(self):
+        """If offloader already exists, remove_hooks() is called before re-creation."""
+        torch = pytest.importorskip("torch")
+        backend = _make_t2v_backend()
+
+        # Set up an existing offloader
+        existing_offloader = MagicMock()
+        backend._offloader = existing_offloader
+
+        model = MagicMock()
+        model.get_base_model.return_value = model
+        blocks = torch.nn.ModuleList([torch.nn.Linear(4, 4) for _ in range(10)])
+        model.blocks = blocks
+
+        with patch(
+            "flimmer.training.wan.backend.BlockSwapOffloader"
+        ):
+            backend.setup_block_swap(model, blocks_to_swap=5)
+
+        existing_offloader.remove_hooks.assert_called_once()
+
+
+class TestBlockSwapExpertSwitching:
+    """Block swap interaction with expert switching paths."""
+
+    def test_state_dict_swap_calls_prepare_block_devices(self):
+        """_switch_via_state_dict calls prepare_block_devices on existing offloader."""
+        torch = pytest.importorskip("torch")
+        backend = _make_t2v_backend(preload_experts=True)
+        backend._current_expert = "high_noise"
+
+        # Set up offloader mock
+        offloader = MagicMock()
+        backend._offloader = offloader
+
+        # Create a fake model
+        model = MagicMock()
+        base_model = MagicMock()
+        model.get_base_model.return_value = base_model
+        blocks = torch.nn.ModuleList([torch.nn.Linear(4, 4) for _ in range(10)])
+        base_model.blocks = blocks
+        base_model.state_dict.return_value = {"w": torch.zeros(2)}
+        base_model.parameters.return_value = iter([torch.nn.Parameter(torch.zeros(2))])
+
+        # Pre-load cached state for the target expert
+        backend._cached_state_dicts["low_noise"] = {"w": torch.zeros(2)}
+
+        backend._switch_via_state_dict(model, "low_noise")
+
+        offloader.prepare_block_devices.assert_called_once_with(blocks)
+
+    def test_state_dict_swap_no_offloader_no_error(self):
+        """_switch_via_state_dict with no offloader doesn't crash."""
+        torch = pytest.importorskip("torch")
+        backend = _make_t2v_backend(preload_experts=True)
+        backend._current_expert = "high_noise"
+
+        model = MagicMock()
+        base_model = MagicMock()
+        model.get_base_model.return_value = base_model
+        base_model.state_dict.return_value = {"w": torch.zeros(2)}
+        base_model.parameters.return_value = iter([torch.nn.Parameter(torch.zeros(2))])
+
+        backend._cached_state_dicts["low_noise"] = {"w": torch.zeros(2)}
+
+        # Should not raise
+        backend._switch_via_state_dict(model, "low_noise")
+
+
+# ---------------------------------------------------------------------------
 # Helper: build a model class that raises on from_pretrained
 # ---------------------------------------------------------------------------
 

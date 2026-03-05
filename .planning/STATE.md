@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Low VRAM Training
 status: active
-stopped_at: Completed 06-01-PLAN.md (Phase 6 fully done — both plans complete)
-last_updated: "2026-03-05T04:59:55Z"
-last_activity: 2026-03-05 — Executed 06-01 (image encoding + I2V auto self-referencing)
+stopped_at: Completed 07-01-PLAN.md
+last_updated: "2026-03-05T16:58:47Z"
+last_activity: 2026-03-05 — Executed 07-01 (BlockSwapOffloader + blocks_to_swap config)
 progress:
   total_phases: 5
   completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
+  total_plans: 5
+  completed_plans: 5
 ---
 
 # Project State
@@ -20,16 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-05)
 
 **Core value:** Complete video LoRA training pipeline — raw footage to trained LoRA checkpoint, now targeting 24GB consumer GPUs
-**Current focus:** Phase 6 complete — Image Training Support (all plans done)
+**Current focus:** Phase 7 in progress — Block Swapping (Plan 01 complete, Plan 02 next)
 
 ## Current Position
 
-Phase: 6 of 9 (Image Training Support) — v1.1
-Plan: 2 of 2 in current phase (all complete)
-Status: Phase 6 fully complete. Both plans executed (06-01 + 06-02).
-Last activity: 2026-03-05 — Executed 06-01 (image encoding + I2V auto self-referencing)
+Phase: 7 of 9 (Block Swapping) — v1.1
+Plan: 1 of 2 in current phase (07-01 complete)
+Status: BlockSwapOffloader class and blocks_to_swap config field complete. Plan 02 wires into training loop.
+Last activity: 2026-03-05 — Executed 07-01 (BlockSwapOffloader + blocks_to_swap config)
 
-Progress: [████░░░░░░] 40% (v1.1 milestone)
+Progress: [████████░░] 80% (v1.1 milestone)
 
 ## Performance Metrics
 
@@ -57,6 +57,7 @@ Progress: [████░░░░░░] 40% (v1.1 milestone)
 | 05 | P01 | 3min | 2 | 4 |
 | 06 | P01 | 7min | 2 | 5 |
 | 06 | P02 | 5min | 2 | 11 |
+| 07 | P01 | 4min | 2 | 4 |
 
 ## Accumulated Context
 
@@ -69,6 +70,7 @@ Progress: [████░░░░░░] 40% (v1.1 milestone)
 - [05-01]: FIX-01 use_reentrant=False for PEFT LoRA gradient correctness; FIX-02 expandable_segments before torch import
 - [06-01]: PIL-based image encoding via _encode_image_as_latent, auto_self_reference for I2V on stills, I2V detection via reference.source != "none"
 - [06-02]: Repeat expansion at sampler level (index duplication) -- no extra disk/VRAM. CacheEntry.repeats defaults to 1 for backwards compat.
+- [07-01]: blocks_to_swap defaults to 0 (opt-in). Only Linear weights swapped; clamped at runtime to num_blocks - 1. Warning at >35 blocks.
 
 ### Blockers/Concerns
 
@@ -78,9 +80,9 @@ Progress: [████░░░░░░] 40% (v1.1 milestone)
 
 ## Session Continuity
 
-Last session: 2026-03-05T04:57:55Z
-Stopped at: Completed 06-01-PLAN.md (Phase 6 fully done — both plans complete)
-Resume file: .planning/phases/07-block-swap/07-01-PLAN.md
+Last session: 2026-03-05T16:58:47Z
+Stopped at: Completed 07-01-PLAN.md
+Resume file: .planning/phases/07-block-swapping/07-01-SUMMARY.md
 
 ## Git Workflow
 
