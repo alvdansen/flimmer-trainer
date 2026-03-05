@@ -11,13 +11,33 @@ bash scripts/train.sh --config my_train.yaml
 
 ## Which Template?
 
-| Template | Model | MoE? | Best for |
+| Template | Model | GPU Tier | Best for |
 |---|---|---|---|
-| `t2v_wan22.yaml` | Wan 2.2 T2V 14B | Yes | Full reference — every option documented with comments |
-| `i2v_wan22.yaml` | Wan 2.2 I2V 14B | Yes | I2V with MoE expert fork |
-| `i2v_wan21.yaml` | Wan 2.1 I2V 14B | No | Simplest — no expert fork, one DiT file |
+| `t2v_wan22.yaml` | Wan 2.2 T2V 14B | 80GB | Full reference — every option documented with comments |
+| `i2v_wan22.yaml` | Wan 2.2 I2V 14B | 80GB | I2V with MoE expert fork |
+| `t2v_wan22_48gb.yaml` | Wan 2.2 T2V 14B | 48GB | T2V on A6000 / RTX 6000 — fp8 + moderate block swap |
+| `i2v_wan22_48gb.yaml` | Wan 2.2 I2V 14B | 48GB | I2V on A6000 / RTX 6000 — fp8 + moderate block swap |
+| `t2v_wan22_24gb.yaml` | Wan 2.2 T2V 14B | 24GB | T2V on RTX 3090/4090 — fp8 + aggressive block swap |
+| `i2v_wan22_24gb.yaml` | Wan 2.2 I2V 14B | 24GB | I2V on RTX 3090/4090 — fp8 + aggressive block swap |
+| `i2v_wan21.yaml` | Wan 2.1 I2V 14B | 80GB | Simplest — no expert fork, one DiT file |
 
 **Tip:** `t2v_wan22.yaml` is the most complete reference config. Even if you're training I2V, it's worth reading for the comments explaining each field.
+
+## GPU Tier Selection
+
+Pick the template matching your GPU's VRAM:
+
+- **80GB (H100, A100):** Use the default templates (`t2v_wan22.yaml`, `i2v_wan22.yaml`). No quantization needed for T2V; fp8 for I2V. Full 720p resolution, up to 81 frames.
+- **48GB (A6000, RTX 6000 Ada, L40S):** Use `*_48gb.yaml` templates. fp8 quantization + 10-15 blocks swapped to CPU. 720p for T2V, 480p for I2V (720p possible with more block swap).
+- **24GB (RTX 3090, RTX 4090):** Use `*_24gb.yaml` templates. fp8 + 25-30 blocks swapped to CPU + 480p resolution. Training works but is slower due to block swap overhead.
+
+Not sure if your config fits? Run the VRAM estimator before training:
+
+```bash
+python -m flimmer.training estimate-vram --config your_config.yaml --gpu-memory 24
+```
+
+For a detailed breakdown of each optimization and its VRAM savings, see [docs/LOW_VRAM_GUIDE.md](../../docs/LOW_VRAM_GUIDE.md).
 
 ## What to Customize
 

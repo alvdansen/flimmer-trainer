@@ -1,0 +1,129 @@
+# ======================================================================
+# Flimmer T2V Training Config — Wan 2.2 (48GB GPU)
+# ======================================================================
+#
+# Optimized for GPUs with 48GB VRAM (A6000, RTX 6000 Ada, L40S).
+#
+# Key tradeoffs vs the 80GB default:
+#   - fp8 quantization (saves ~14 GB)
+#   - 10 transformer blocks offloaded to CPU (saves ~3.5 GB)
+#   - 8-bit optimizer (saves ~0.5 GB)
+#   - Data config: resolution: 720, frame_count: 49
+#
+# 48GB is comfortable for T2V. You get 720p resolution with moderate
+# block swap. Training speed is close to 80GB.
+#
+# Check if your config fits before training:
+#   python -m flimmer.training estimate-vram --config this_config.yaml --gpu-memory 48
+#
+# ======================================================================
+
+
+# -- Model & Data -------------------------------------------------------
+
+model:
+  variant: 2.2_t2v                               # MoE T2V model
+
+  # Two expert DiT files (MoE = separate high/low noise transformers)
+  dit_high: ./models/wan2.2_t2v_high_noise_14B_fp16.safetensors
+  dit_low: ./models/wan2.2_t2v_low_noise_14B_fp16.safetensors
+
+  # Shared components (same across all Wan models)
+  vae: ./models/wan_2.1_vae.safetensors
+  t5: ./models/umt5_xxl_fp16.safetensors
+
+# Point to your dataset's data config
+# NOTE: Use resolution: 720 and frame_count: 49 in your data config
+data_config: ./your_dataset/flimmer_data.yaml
+
+
+# -- LoRA Structure (fixed for entire run) ------------------------------
+
+lora:
+  rank: 16
+  alpha: 16                                      # alpha/rank = 1.0x scaling
+  loraplus_lr_ratio: 4.0
+  dropout: 0.05
+  target_modules: null                           # null = all standard targets
+
+
+# -- Optimizer -----------------------------------------------------------
+
+optimizer:
+  type: adamw8bit                                # 8-bit optimizer
+  learning_rate: 5e-5
+  weight_decay: 0.01
+  betas: [0.9, 0.999]
+  eps: 1e-8
+  max_grad_norm: 1.0
+
+
+# -- Scheduler -----------------------------------------------------------
+
+scheduler:
+  type: cosine_with_min_lr
+  warmup_steps: 0
+  min_lr_ratio: 0.01
+
+
+# -- Training ------------------------------------------------------------
+
+training:
+  mixed_precision: bf16
+  base_model_precision: fp8                      # fp8 saves ~14 GB. Recommended for 48GB.
+  blocks_to_swap: 10                             # 10 blocks offloaded to CPU. Saves ~3.5 GB VRAM.
+                                                 # Moderate overhead — training speed close to unswapped.
+  gradient_checkpointing: true
+  seed: 42
+
+  unified_epochs: 10
+  batch_size: 1
+  gradient_accumulation_steps: 1
+  caption_dropout_rate: 0.10
+
+  timestep_sampling: shift
+  resume_from: null
+
+
+# -- MoE Expert Fork ----------------------------------------------------
+
+moe:
+  enabled: true
+  fork_enabled: true
+  boundary_ratio: null                           # null = model default (0.500 for T2V)
+  preload_experts: false                         # Set true on cloud pods with ample CPU RAM
+
+  high_noise:
+    max_epochs: 30
+
+  low_noise:
+    max_epochs: 50
+
+
+# -- Checkpoints ---------------------------------------------------------
+
+save:
+  output_dir: ./output
+  name: my_t2v_lora
+  save_every_n_epochs: 5
+  save_last: true
+  format: safetensors
+
+
+# -- Logging -------------------------------------------------------------
+
+logging:
+  backends: [console]                            # Add "wandb" for W&B tracking
+  log_every_n_steps: 10
+
+
+# -- Sampling ------------------------------------------------------------
+
+sampling:
+  enabled: false                                 # Enable to generate sample videos during training
+  every_n_epochs: 5
+  prompts:
+    - "A person walks through a sunlit garden"
+  seed: 42
+  sample_steps: 25
+  guidance_scale: 4.0

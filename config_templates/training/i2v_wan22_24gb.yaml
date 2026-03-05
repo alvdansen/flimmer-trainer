@@ -1,0 +1,134 @@
+# ======================================================================
+# Flimmer I2V Training Config — Wan 2.2 (24GB GPU)
+# ======================================================================
+#
+# Optimized for GPUs with 24GB VRAM (RTX 3090, RTX 4090).
+#
+# I2V uses 36-channel input (16 video + 16 first frame + 4 mask),
+# which needs ~2.25x more activation memory than T2V's 16 channels.
+# This means I2V on 24GB needs more aggressive block swap than T2V.
+#
+# Key tradeoffs vs the 80GB default:
+#   - fp8 quantization (saves ~14 GB, required)
+#   - 30 transformer blocks offloaded to CPU (saves ~10.5 GB)
+#   - 8-bit optimizer (saves ~0.5 GB)
+#   - Data config: resolution: 480, frame_count: 33
+#
+# Check if your config fits before training:
+#   python -m flimmer.training estimate-vram --config this_config.yaml --gpu-memory 24
+#
+# ======================================================================
+
+
+# -- Model & Data -------------------------------------------------------
+
+model:
+  variant: 2.2_i2v                               # MoE I2V model
+
+  # Two expert DiT files (MoE = separate high/low noise transformers)
+  dit_high: ./models/wan2.2_i2v_high_noise_14B_fp16.safetensors
+  dit_low: ./models/wan2.2_i2v_low_noise_14B_fp16.safetensors
+
+  # Shared components (same across all Wan models)
+  vae: ./models/wan_2.1_vae.safetensors
+  t5: ./models/umt5_xxl_fp16.safetensors
+
+# Point to your dataset's data config
+# NOTE: Use resolution: 480 and frame_count: 33 in your data config
+data_config: ./your_dataset/flimmer_data.yaml
+
+
+# -- LoRA Structure (fixed for entire run) ------------------------------
+
+lora:
+  rank: 16                                       # 16 is default. Drop to 8 if still tight on VRAM.
+  alpha: 16                                      # alpha/rank = 1.0x scaling
+  loraplus_lr_ratio: 4.0
+  dropout: 0.05
+  target_modules: null                           # null = all standard targets
+
+
+# -- Optimizer -----------------------------------------------------------
+
+optimizer:
+  type: adamw8bit                                # 8-bit optimizer — saves ~0.5 GB over full adamw
+  learning_rate: 5e-5
+  weight_decay: 0.01
+  betas: [0.9, 0.999]
+  eps: 1e-8
+  max_grad_norm: 1.0
+
+
+# -- Scheduler -----------------------------------------------------------
+
+scheduler:
+  type: cosine_with_min_lr
+  warmup_steps: 0
+  min_lr_ratio: 0.01
+
+
+# -- Training ------------------------------------------------------------
+
+training:
+  mixed_precision: bf16
+  base_model_precision: fp8                      # fp8 required for 24GB. Saves ~14 GB vs bf16.
+  blocks_to_swap: 30                             # 30 blocks offloaded to CPU. I2V needs more than T2V (25).
+                                                 # Saves ~10.5 GB VRAM. Range: 25-35 for I2V on 24GB.
+  gradient_checkpointing: true
+  seed: 42
+
+  # Unified phase: both experts train together with shared LoRA weights
+  unified_epochs: 15                             # I2V benefits from longer unified phase
+  batch_size: 1                                  # Must be 1 for 24GB
+  gradient_accumulation_steps: 1
+
+  # I2V-specific dropout rates
+  caption_dropout_rate: 0.15                     # Higher than T2V to rely more on image conditioning
+
+  timestep_sampling: shift
+  resume_from: null
+
+
+# -- MoE Expert Fork ----------------------------------------------------
+
+moe:
+  enabled: true
+  fork_enabled: true
+  boundary_ratio: null                           # null = model default (0.900 for I2V)
+  preload_experts: false                         # false = reload from disk (~30s per switch)
+                                                 # Keeps CPU RAM usage low for consumer machines
+
+  high_noise:
+    max_epochs: 30
+
+  low_noise:
+    max_epochs: 50
+
+
+# -- Checkpoints ---------------------------------------------------------
+
+save:
+  output_dir: ./output/my_i2v_22
+  name: my_i2v_lora
+  save_every_n_epochs: 5
+  save_last: true
+  format: safetensors
+
+
+# -- Logging -------------------------------------------------------------
+
+logging:
+  backends: [console]                            # Add "wandb" for W&B tracking
+  log_every_n_steps: 10
+
+
+# -- Sampling ------------------------------------------------------------
+
+sampling:
+  enabled: false                                 # Enable to generate sample videos during training
+  every_n_epochs: 5
+  prompts:
+    - "A person walks through a sunlit garden"
+  seed: 42
+  sample_steps: 25
+  guidance_scale: 4.0
