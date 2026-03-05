@@ -27,12 +27,15 @@ Requires: torch, diffusers, peft (the 'wan' dependency group).
 from __future__ import annotations
 
 import gc
+import logging
 from pathlib import Path
 from typing import Any
 
 from flimmer.training.errors import ModelBackendError
 from flimmer.training.noise import FlowMatchingSchedule, get_expert_masks
 from flimmer.training.wan.constants import WAN_EXPERT_SUBFOLDERS, WAN_SINGLE_SUBFOLDER
+
+logger = logging.getLogger(__name__)
 
 
 def _clean_gpu_memory() -> None:
@@ -744,6 +747,21 @@ class WanModelBackend:
         For PEFT models, enables on the base model to ensure the flag
         reaches the actual transformer blocks.
 
+        **Why use_reentrant=False is required:** PEFT LoRA freezes all
+        base model parameters (requires_grad=False) and only trains the
+        injected adapter weights. With use_reentrant=True (the old
+        default), torch.utils.checkpoint discards gradients for any
+        input that does not require grad. This silently produces zero
+        gradients for the LoRA adapters since their inputs flow through
+        frozen base parameters. use_reentrant=False uses a
+        saved-variable-based implementation that correctly propagates
+        gradients regardless of the requires_grad status of inputs.
+
+        The diffusers enable_gradient_checkpointing() API already
+        defaults to use_reentrant=False internally (since diffusers
+        0.35.x). The transformers gradient_checkpointing_enable() API
+        requires the kwarg to be passed explicitly.
+
         Args:
             model: Loaded WanTransformer3DModel or PeftModel wrapper.
         """
@@ -754,8 +772,12 @@ class WanModelBackend:
 
         if hasattr(base_model, "enable_gradient_checkpointing"):
             base_model.enable_gradient_checkpointing()
+            logger.info("Enabled gradient checkpointing with use_reentrant=False")
         elif hasattr(base_model, "gradient_checkpointing_enable"):
-            base_model.gradient_checkpointing_enable()
+            base_model.gradient_checkpointing_enable(
+                gradient_checkpointing_kwargs={"use_reentrant": False}
+            )
+            logger.info("Enabled gradient checkpointing with use_reentrant=False")
 
     def get_noise_schedule(self) -> FlowMatchingSchedule:
         """Return the flow matching noise schedule for Wan.
