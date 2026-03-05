@@ -14,10 +14,18 @@ The data preparation tools are **standalone** — they produce standard output f
 
 ### Using scripts (recommended for getting started)
 
+**Linux / Cloud GPUs:**
 ```bash
 bash scripts/setup.sh --variant 2.2_i2v         # install deps + download weights
 bash scripts/prepare.sh --config train.yaml      # pre-encode latents + text
 bash scripts/train.sh --config train.yaml        # train
+```
+
+**Windows (PowerShell):**
+```powershell
+.\scripts\setup.ps1 -Variant 2.2_i2v            # install deps + download weights
+.\scripts\prepare.ps1 -Config train.yaml         # pre-encode latents + text
+.\scripts\train.ps1 -Config train.yaml           # train
 ```
 
 See [Local Setup Guide](docs/LOCAL_SETUP.md) for full options and project-based workflows.

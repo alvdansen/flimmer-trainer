@@ -2,18 +2,26 @@
 
 This guide covers the three-script workflow for setting up and running Flimmer on a local GPU machine.
 
+Both **Linux** and **Windows** are supported. The Linux guide uses bash scripts (`setup.sh`, `prepare.sh`, `train.sh`), while Windows uses PowerShell equivalents (`setup.ps1`, `prepare.ps1`, `train.ps1`). The Python code underneath is identical.
+
+- **Linux / Cloud GPUs (RunPod, Vast, etc.):** See [Linux Setup](#linux-setup) below.
+- **Windows:** See [Windows Setup](#windows-setup).
+
 ---
 
 ## Prerequisites
 
-- **Linux** with NVIDIA GPU (tested on A6000, should work on any Ampere+ with sufficient VRAM)
+- **NVIDIA GPU** with Ampere+ architecture (RTX 3090, 4090, A5000, A6000, H100, etc.)
 - **CUDA drivers** installed (`nvidia-smi` should report your GPU)
 - **Python 3.10+**
 - **~24 GB VRAM minimum** for training (Wan 14B with LoRA + gradient checkpointing)
 - **Disk space** for model weights (44-69 GB depending on variant — see table below)
-- **tmux** recommended for background training sessions (optional — scripts gracefully fall back to foreground)
+- **ffmpeg** for video operations (`winget install ffmpeg` on Windows, `apt install ffmpeg` on Linux)
+- **tmux** recommended for Linux background training sessions (optional — scripts fall back to foreground)
 
 ---
+
+# Linux Setup
 
 ## Three-Script Workflow
 
@@ -230,4 +238,110 @@ export FLIMMER_VENV=/path/to/existing/venv
 ```bash
 sudo apt install tmux          # Debian/Ubuntu
 sudo dnf install tmux          # Fedora
+```
+
+---
+
+# Windows Setup
+
+Windows uses PowerShell scripts that mirror the Linux bash scripts. The Python code is identical — only the shell wrappers differ.
+
+## Prerequisites (Windows-specific)
+
+- **Windows 10/11** with NVIDIA GPU
+- **Python 3.10+** (from [python.org](https://www.python.org/downloads/) or `winget install Python.Python.3.12`)
+- **ffmpeg** — install with `winget install ffmpeg`
+- **NVIDIA drivers** — install from [nvidia.com](https://www.nvidia.com/download/index.aspx)
+
+## Three-Script Workflow
+
+```
+setup.ps1  →  prepare.ps1  →  train.ps1
+ venv          encode           train
+ deps          VAE latents      LoRA
+ GPU check     T5 text          checkpoint
+ weights
+```
+
+### 1. Setup (`scripts\setup.ps1`)
+
+Creates a Python venv, installs all dependencies, verifies GPU access, and downloads model weights.
+
+```powershell
+.\scripts\setup.ps1 -Variant 2.2_i2v           # full setup with Wan 2.2 I2V weights
+.\scripts\setup.ps1 -Variant 2.1_i2v_480p       # full setup with Wan 2.1 I2V 480p
+.\scripts\setup.ps1 -SkipDownloads              # venv + deps + GPU check only (no weights)
+.\scripts\setup.ps1 -Variant 2.2_t2v -VenvPath C:\path\to\venv
+```
+
+**Available variants:** Same as Linux — see the [variant table](#available-variants) above.
+
+### 2. Prepare (`scripts\prepare.ps1`)
+
+Runs VAE latent pre-encoding followed by T5 text pre-encoding.
+
+```powershell
+.\scripts\prepare.ps1 -Config path\to\train.yaml
+.\scripts\prepare.ps1 -Project path\to\project.yaml
+.\scripts\prepare.ps1 -Config path\to\train.yaml -DryRun
+.\scripts\prepare.ps1 -Config path\to\train.yaml -Force
+```
+
+### 3. Train (`scripts\train.ps1`)
+
+Launches training with either a single config or a project-based multi-phase workflow.
+
+```powershell
+# Single config
+.\scripts\train.ps1 -Config path\to\train.yaml
+
+# Project mode
+.\scripts\train.ps1 -Project path\to\project.yaml              # run next pending phase
+.\scripts\train.ps1 -Project path\to\project.yaml -All          # run all pending phases
+.\scripts\train.ps1 -Project path\to\project.yaml -Status       # check phase progress
+.\scripts\train.ps1 -Project path\to\project.yaml -DryRun       # preview training plan
+```
+
+## Environment Variables
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `FLIMMER_VENV` | `.venv` in repo root | Override venv location for `prepare.ps1` and `train.ps1` |
+
+```powershell
+$env:FLIMMER_VENV = "C:\path\to\my-venv"
+.\scripts\prepare.ps1 -Config train.yaml
+.\scripts\train.ps1 -Config train.yaml
+```
+
+## Troubleshooting (Windows)
+
+### PowerShell execution policy
+
+If you get "scripts cannot be run on this system", open PowerShell as admin and run:
+
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+### "nvidia-smi not found"
+
+Ensure NVIDIA drivers are installed. `nvidia-smi` should be at `C:\Windows\System32\nvidia-smi.exe`. If not, install drivers from [nvidia.com](https://www.nvidia.com/download/index.aspx).
+
+### PyTorch CUDA not available
+
+If `nvidia-smi` works but PyTorch can't see CUDA:
+
+```powershell
+pip install torch --index-url https://download.pytorch.org/whl/cu121
+```
+
+### "Virtual environment not found"
+
+Run `setup.ps1` first, or point to an existing venv:
+
+```powershell
+.\scripts\setup.ps1 -Variant 2.2_i2v
+# or
+$env:FLIMMER_VENV = "C:\path\to\existing\venv"
 ```
