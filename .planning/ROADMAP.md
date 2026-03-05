@@ -76,7 +76,9 @@ Plans:
   1. User can set `optimizer: cpu_offload` in their training config to offload optimizer state to CPU via torchao
   2. User can set `optimizer: adam_mini` for reduced optimizer state memory (45-50% reduction vs AdamW)
   3. Both new optimizer options work correctly in combination with block swap and fp8 quantization
-**Plans**: TBD
+**Plans:** 1 plan
+Plans:
+- [ ] 08-01-PLAN.md — cpu_offload and adam_mini optimizer dispatch + config registration + tests
 
 ### Phase 9: VRAM Estimation and User Experience
 **Goal**: Users know exactly what settings to use for their GPU tier and get warned before wasting time on configs that will OOM
@@ -100,5 +102,5 @@ Plans:
 | 5. Training Correctness | v1.1 | 0/1 | Planned | - |
 | 6. Image Training Support | v1.1 | 0/2 | Planned | - |
 | 7. Block Swapping | v1.1 | 0/2 | Planned | - |
-| 8. Optimizer Improvements | v1.1 | 0/? | Not started | - |
+| 8. Optimizer Improvements | v1.1 | 0/1 | Planned | - |
 | 9. VRAM Estimation and User Experience | v1.1 | 0/? | Not started | - |

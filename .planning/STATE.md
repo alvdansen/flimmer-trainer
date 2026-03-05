@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Low VRAM Training
 status: active
-stopped_at: Completed 07-02-PLAN.md
-last_updated: "2026-03-05T17:08:47Z"
-last_activity: 2026-03-05 — Executed 07-02 (Block swap training loop integration)
+stopped_at: Completed 08-01-PLAN.md
+last_updated: "2026-03-05T21:34:43.100Z"
+last_activity: 2026-03-05 — Executed 08-01 (CPU offload and Adam-Mini optimizer dispatch)
 progress:
   total_phases: 5
-  completed_phases: 3
-  total_plans: 5
-  completed_plans: 5
+  completed_phases: 4
+  total_plans: 6
+  completed_plans: 6
 ---
 
 # Project State
@@ -20,16 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-05)
 
 **Core value:** Complete video LoRA training pipeline — raw footage to trained LoRA checkpoint, now targeting 24GB consumer GPUs
-**Current focus:** Phase 7 complete — Block Swapping. Ready for Phase 8 (Optimizer + Memory).
+**Current focus:** Phase 8 complete — Optimizer improvements. Ready for Phase 9 (Integration Testing).
 
 ## Current Position
 
-Phase: 7 of 9 (Block Swapping) — v1.1
-Plan: 2 of 2 in current phase (07-02 complete, phase done)
-Status: Block swapping fully integrated into training pipeline. Phase 07 complete.
-Last activity: 2026-03-05 — Executed 07-02 (Block swap training loop integration)
+Phase: 8 of 9 (Optimizer Improvements) — v1.1
+Plan: 1 of 1 in current phase (08-01 complete, phase done)
+Status: CPU offload and Adam-Mini optimizer dispatch added. Phase 08 complete.
+Last activity: 2026-03-05 — Executed 08-01 (CPU offload and Adam-Mini optimizer dispatch)
 
-Progress: [█████████░] 85% (v1.1 milestone)
+Progress: [██████████] 100% (v1.1 milestone)
 
 ## Performance Metrics
 
@@ -59,6 +59,7 @@ Progress: [█████████░] 85% (v1.1 milestone)
 | 06 | P02 | 5min | 2 | 11 |
 | 07 | P01 | 4min | 2 | 4 |
 | 07 | P02 | 7min | 2 | 4 |
+| 08 | P01 | 4min | 2 | 5 |
 
 ## Accumulated Context
 
@@ -73,6 +74,7 @@ Progress: [█████████░] 85% (v1.1 milestone)
 - [06-02]: Repeat expansion at sampler level (index duplication) -- no extra disk/VRAM. CacheEntry.repeats defaults to 1 for backwards compat.
 - [07-01]: blocks_to_swap defaults to 0 (opt-in). Only Linear weights swapped; clamped at runtime to num_blocks - 1. Warning at >35 blocks.
 - [07-02]: Block swap NOT re-registered after PEFT wrapping (hooks persist through PEFT wrap). hasattr guard for non-Wan backend compat.
+- [08-01]: offload_gradients=False for cpu_offload (True breaks gradient accumulation). adam_mini bypasses LoRA+ A/B grouping. Wan constants hardcoded in dispatch.
 
 ### Blockers/Concerns
 
@@ -82,9 +84,9 @@ Progress: [█████████░] 85% (v1.1 milestone)
 
 ## Session Continuity
 
-Last session: 2026-03-05T17:08:47Z
-Stopped at: Completed 07-02-PLAN.md (Phase 07 complete)
-Resume file: .planning/phases/07-block-swapping/07-02-SUMMARY.md
+Last session: 2026-03-05T21:34:43Z
+Stopped at: Completed 08-01-PLAN.md
+Resume file: .planning/phases/08-optimizer-improvements/08-01-SUMMARY.md
 
 ## Git Workflow
 

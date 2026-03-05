@@ -26,9 +26,9 @@
 
 ### Optimizer Improvements
 
-- [ ] **OPT-01**: Optimizer state CPU offloading via torchao CPUOffloadOptimizer wrapper
-- [ ] **OPT-02**: Adam-Mini optimizer option for 45-50% optimizer state reduction
-- [ ] **OPT-03**: Memory-efficient optimizer selection via `optimizer` config field (adamw8bit, adam_mini, cpu_offload)
+- [x] **OPT-01**: Optimizer state CPU offloading via torchao CPUOffloadOptimizer wrapper
+- [x] **OPT-02**: Adam-Mini optimizer option for 45-50% optimizer state reduction
+- [x] **OPT-03**: Memory-efficient optimizer selection via `optimizer` config field (adamw8bit, adam_mini, cpu_offload)
 
 ### VRAM Estimation
 
@@ -85,9 +85,9 @@
 | IMG-02 | Phase 6 | Complete |
 | IMG-03 | Phase 6 | Complete |
 | IMG-04 | Phase 6 | Complete |
-| OPT-01 | Phase 8 | Pending |
-| OPT-02 | Phase 8 | Pending |
-| OPT-03 | Phase 8 | Pending |
+| OPT-01 | Phase 8 | Complete |
+| OPT-02 | Phase 8 | Complete |
+| OPT-03 | Phase 8 | Complete |
 | VRAM-01 | Phase 9 | Pending |
 | VRAM-02 | Phase 9 | Pending |
 | VRAM-03 | Phase 9 | Pending |
