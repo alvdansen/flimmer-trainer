@@ -8,8 +8,8 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-import cv2
 import numpy as np
+from PIL import Image
 import pytest
 
 from tests.conftest import requires_ffmpeg
@@ -49,7 +49,7 @@ def _touch(path: Path, content: bytes = b"") -> Path:
 
 def _save_image(path: Path, pixels: np.ndarray) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
-    cv2.imwrite(str(path), pixels)
+    Image.fromarray(pixels).save(path)
     return path
 
 
@@ -369,10 +369,10 @@ class TestValidateDataset:
         img = np.full((64, 64, 3), 128, dtype=np.uint8)
         _touch(tmp_path / "a.mp4")
         _touch(tmp_path / "a.txt", b"Caption a")
-        cv2.imwrite(str(tmp_path / "a.png"), img)
+        Image.fromarray(img).save(tmp_path / "a.png")
         _touch(tmp_path / "b.mp4")
         _touch(tmp_path / "b.txt", b"Caption b")
-        cv2.imwrite(str(tmp_path / "b.png"), img)
+        Image.fromarray(img).save(tmp_path / "b.png")
 
         config = _default_config(check_duplicates=True)
         discovered = discover_dataset(tmp_path, config)
@@ -384,10 +384,10 @@ class TestValidateDataset:
         img = np.full((64, 64, 3), 128, dtype=np.uint8)
         _touch(tmp_path / "a.mp4")
         _touch(tmp_path / "a.txt", b"Caption a")
-        cv2.imwrite(str(tmp_path / "a.png"), img)
+        Image.fromarray(img).save(tmp_path / "a.png")
         _touch(tmp_path / "b.mp4")
         _touch(tmp_path / "b.txt", b"Caption b")
-        cv2.imwrite(str(tmp_path / "b.png"), img)
+        Image.fromarray(img).save(tmp_path / "b.png")
 
         config = _default_config(check_duplicates=False)
         discovered = discover_dataset(tmp_path, config)
@@ -486,10 +486,10 @@ class TestValidateAll:
         img = np.full((64, 64, 3), 128, dtype=np.uint8)
         _touch(ds1 / "clip.mp4")
         _touch(ds1 / "clip.txt", b"Caption 1")
-        cv2.imwrite(str(ds1 / "clip.png"), img)
+        Image.fromarray(img).save(ds1 / "clip.png")
         _touch(ds2 / "clip.mp4")
         _touch(ds2 / "clip.txt", b"Caption 2")
-        cv2.imwrite(str(ds2 / "clip.png"), img)
+        Image.fromarray(img).save(ds2 / "clip.png")
 
         config = FlimmerDataConfig(
             datasets=[{"path": str(ds1)}, {"path": str(ds2)}],

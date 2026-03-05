@@ -9,8 +9,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import cv2
 import numpy as np
+from PIL import Image, ImageFilter
 import pytest
 
 from flimmer.video.image_quality import compute_sharpness, is_blank, validate_extracted_image
@@ -32,7 +32,7 @@ def _write_sharp_image(path: Path, width: int = 320, height: int = 240) -> None:
         for x in range(0, width, 4):
             if ((x // 4) + (y // 4)) % 2 == 0:
                 img[y:y+4, x:x+4] = 255
-    cv2.imwrite(str(path), img)
+    Image.fromarray(img).save(path)
 
 
 def _write_blank_image(
@@ -43,7 +43,7 @@ def _write_blank_image(
 ) -> None:
     """Write a solid-color (blank) image. Default is black."""
     img = np.full((height, width, 3), color, dtype=np.uint8)
-    cv2.imwrite(str(path), img)
+    Image.fromarray(img).save(path)
 
 
 def _write_blurry_image(path: Path, width: int = 320, height: int = 240) -> None:
@@ -59,15 +59,15 @@ def _write_blurry_image(path: Path, width: int = 320, height: int = 240) -> None
             if ((x // 4) + (y // 4)) % 2 == 0:
                 img[y:y+4, x:x+4] = 255
     # Heavy blur — kernel 51x51
-    blurred = cv2.GaussianBlur(img, (51, 51), 0)
-    cv2.imwrite(str(path), blurred)
+    blurred = np.array(Image.fromarray(img).filter(ImageFilter.GaussianBlur(radius=25)))
+    Image.fromarray(blurred).save(path)
 
 
 def _write_noisy_image(path: Path, width: int = 320, height: int = 240) -> None:
     """Write a random noise image — moderate sharpness everywhere."""
     rng = np.random.default_rng(42)
     img = rng.integers(0, 256, (height, width, 3), dtype=np.uint8)
-    cv2.imwrite(str(path), img)
+    Image.fromarray(img).save(path)
 
 
 # ---------------------------------------------------------------------------

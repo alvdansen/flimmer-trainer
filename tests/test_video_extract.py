@@ -9,8 +9,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import cv2
 import numpy as np
+from PIL import Image
 import pytest
 
 from flimmer.video.extract_models import (
@@ -42,7 +42,7 @@ def _write_test_image(
     else:
         rng = np.random.default_rng(42)
         img = rng.integers(0, 256, (height, width, 3), dtype=np.uint8)
-    cv2.imwrite(str(path), img)
+    Image.fromarray(img).save(path)
 
 
 # ---------------------------------------------------------------------------
@@ -94,7 +94,7 @@ class TestExtractFirstFrame:
         output = tmp_path / "ref.png"
         extract_first_frame(tiny_video, output)
 
-        img = cv2.imread(str(output))
+        img = np.array(Image.open(output))
         assert img is not None
         assert img.shape[0] > 0  # height
         assert img.shape[1] > 0  # width
@@ -237,7 +237,7 @@ class TestCopyImageAsReference:
         assert result.success is True
         assert output.exists()
         # Verify it's actually a PNG by reading back
-        img = cv2.imread(str(output))
+        img = np.array(Image.open(output))
         assert img is not None
 
     def test_has_sharpness(self, tmp_path: Path) -> None:
@@ -346,7 +346,7 @@ class TestExtractReferenceImage:
         assert result.success is True
         assert result.skipped is False
         # File should be a real image now, not "old"
-        img = cv2.imread(str(output))
+        img = np.array(Image.open(output))
         assert img is not None
 
     def test_unsupported_extension(self, tmp_path: Path) -> None:

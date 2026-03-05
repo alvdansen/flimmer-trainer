@@ -8,8 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import cv2
 import numpy as np
+from PIL import Image
 import pytest
 
 from flimmer.dataset.__main__ import build_parser, cmd_organize, cmd_validate
@@ -29,7 +29,7 @@ def _make_textured_image(path: Path, size: int = 64) -> Path:
     rng = np.random.RandomState(42)
     img = rng.randint(0, 256, (size, size, 3), dtype=np.uint8)
     path.parent.mkdir(parents=True, exist_ok=True)
-    cv2.imwrite(str(path), img)
+    Image.fromarray(img).save(path)
     return path
 
 

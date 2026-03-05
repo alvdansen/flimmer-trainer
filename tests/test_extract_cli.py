@@ -10,8 +10,8 @@ import json
 import shutil
 from pathlib import Path
 
-import cv2
 import numpy as np
+from PIL import Image
 import pytest
 
 from tests.conftest import requires_ffmpeg
@@ -28,7 +28,7 @@ def _write_test_image(path: Path, width: int = 320, height: int = 240) -> None:
         for x in range(0, width, 8):
             if ((x // 8) + (y // 8)) % 2 == 0:
                 img[y:y+8, x:x+8] = 255
-    cv2.imwrite(str(path), img)
+    Image.fromarray(img).save(path)
 
 
 # ---------------------------------------------------------------------------

@@ -9,8 +9,8 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-import cv2
 import numpy as np
+from PIL import Image
 import pytest
 
 from tests.conftest import requires_ffmpeg
@@ -31,7 +31,7 @@ from flimmer.dataset.quality import (
 def _save_gray_image(path: Path, pixels: np.ndarray) -> Path:
     """Write a grayscale numpy array as a PNG file."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    cv2.imwrite(str(path), pixels)
+    Image.fromarray(pixels).save(path)
     return path
 
 
@@ -166,11 +166,11 @@ class TestComputeDhash:
         # Create a 128x128 gradient and a 64x64 gradient
         big = np.tile(np.linspace(0, 255, 128, dtype=np.uint8), (128, 1))
         big_path = tmp_path / "big.png"
-        cv2.imwrite(str(big_path), big)
+        Image.fromarray(big).save(big_path)
 
         small = np.tile(np.linspace(0, 255, 64, dtype=np.uint8), (64, 1))
         small_path = tmp_path / "small.png"
-        cv2.imwrite(str(small_path), small)
+        Image.fromarray(small).save(small_path)
 
         h_big = compute_dhash(big_path)
         h_small = compute_dhash(small_path)
@@ -230,8 +230,8 @@ class TestFindDuplicates:
         img = np.full((64, 64), 128, dtype=np.uint8)
         p1 = tmp_path / "a.png"
         p2 = tmp_path / "b.png"
-        cv2.imwrite(str(p1), img)
-        cv2.imwrite(str(p2), img)
+        Image.fromarray(img).save(p1)
+        Image.fromarray(img).save(p2)
         groups = find_duplicates([p1, p2])
         assert len(groups) == 1
         assert len(groups[0]) == 2
@@ -241,13 +241,13 @@ class TestFindDuplicates:
         rng = np.random.RandomState(42)
         base = rng.randint(0, 256, (64, 64), dtype=np.uint8)
         p1 = tmp_path / "orig.png"
-        cv2.imwrite(str(p1), base)
+        Image.fromarray(base).save(p1)
 
         # Add very slight noise (< 5 pixel values)
         noisy = base.copy()
         noisy[0:2, 0:2] = (noisy[0:2, 0:2].astype(int) + 1).clip(0, 255).astype(np.uint8)
         p2 = tmp_path / "noisy.png"
-        cv2.imwrite(str(p2), noisy)
+        Image.fromarray(noisy).save(p2)
 
         groups = find_duplicates([p1, p2], threshold=6)
         assert len(groups) == 1
@@ -276,7 +276,7 @@ class TestFindDuplicates:
         paths = []
         for name in ["a.png", "b.png", "c.png"]:
             p = tmp_path / name
-            cv2.imwrite(str(p), img)
+            Image.fromarray(img).save(p)
             paths.append(p)
         groups = find_duplicates(paths)
         assert len(groups) == 1
