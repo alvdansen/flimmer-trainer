@@ -309,7 +309,11 @@ def collate_cached_batch(
     except ImportError:
         # No torch — return raw values (for testing)
         for key in ("latent", "text_emb", "text_mask", "reference"):
-            result[key] = [item[key] for item in batch]
+            values = [item[key] for item in batch]
+            if all(v is None for v in values):
+                result[key] = None
+            else:
+                result[key] = values
 
     return result
 
