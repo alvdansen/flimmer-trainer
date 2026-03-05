@@ -234,6 +234,15 @@ class TrainingOrchestrator:
                 self._model.to(device)
         if self._config.training.gradient_checkpointing:
             self._backend.setup_gradient_checkpointing(self._model)
+        # Block swap setup (after gradient checkpointing, before phase execution).
+        # Uses hasattr guard to keep loop compatible with non-Wan backends.
+        if (
+            getattr(self._config.training, "blocks_to_swap", 0) > 0
+            and hasattr(self._backend, "setup_block_swap")
+        ):
+            self._backend.setup_block_swap(
+                self._model, self._config.training.blocks_to_swap
+            )
 
         # Execute phases
         for phase_idx in range(start_phase_idx, len(self._phases)):
@@ -508,6 +517,15 @@ class TrainingOrchestrator:
                 self._model.to(device)
         if self._config.training.gradient_checkpointing:
             self._backend.setup_gradient_checkpointing(self._model)
+        # Re-register block swap after expert switch (disk reload destroys hooks;
+        # state_dict swap hooks survive but setup_block_swap handles both paths).
+        if (
+            getattr(self._config.training, "blocks_to_swap", 0) > 0
+            and hasattr(self._backend, "setup_block_swap")
+        ):
+            self._backend.setup_block_swap(
+                self._model, self._config.training.blocks_to_swap
+            )
 
     def _setup_phase_lora(
         self,
@@ -556,6 +574,10 @@ class TrainingOrchestrator:
         # to the base model inside the PEFT wrapper.
         if self._config.training.gradient_checkpointing:
             self._backend.setup_gradient_checkpointing(self._model)
+        # NOTE: Block swap hooks are NOT re-registered here. PEFT wraps at the
+        # model level, not the block level -- hooks on base_model.blocks persist
+        # through PEFT wrapping. Only gradient checkpointing needs re-application
+        # because PEFT may reset the checkpointing flag on the wrapper.
 
         # Inject existing weights (resumption or post-fork)
         if active_lora is not None and active_lora.state_dict:

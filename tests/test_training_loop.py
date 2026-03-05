@@ -588,6 +588,9 @@ class BlockSwapMockBackend(MockModelBackend):
         self.setup_block_swap_calls = []
         self.setup_gradient_checkpointing_calls = []
 
+    def load_model(self, config, expert=None):
+        return "mock_model"
+
     def setup_block_swap(self, model, blocks_to_swap):
         self.setup_block_swap_calls.append({
             "model": model,
@@ -659,22 +662,41 @@ class TestBlockSwapWiring:
         assert gc_idx < bs_idx
 
     def test_block_swap_called_after_expert_switch(self, tmp_path):
-        """Block swap setup is called after expert switch in _ensure_expert_model."""
+        """Block swap setup is called after expert switch in _ensure_expert_model.
+
+        _ensure_expert_model only runs when dataset is not None, so we call
+        it directly with a phase that has an active_expert set.
+        """
+        from flimmer.training.phase import TrainingPhase
+
         config = MockConfig(tmp_path)
         config.training.blocks_to_swap = 10
-        config.training.unified_epochs = 1
-        config.save.save_every_n_epochs = 1
 
         backend = BlockSwapMockBackend()
         orch = TrainingOrchestrator(config, backend)
-        orch.run(dataset=None)
 
-        # With MoE config (default), there are expert phases after unified.
-        # Block swap should be called multiple times:
-        # 1. After initial model load
-        # 2. After expert switch(es)
-        # At least 2 calls expected (initial + first expert switch)
-        assert len(backend.setup_block_swap_calls) >= 2
+        # Create a phase with active_expert to trigger expert switch
+        phase = TrainingPhase(
+            phase_type=PhaseType.LOW_NOISE, max_epochs=10,
+            learning_rate=5e-5, weight_decay=0.01,
+            optimizer_type="adamw8bit", scheduler_type="cosine_with_min_lr",
+            min_lr_ratio=0.01, warmup_steps=0, batch_size=1,
+            gradient_accumulation_steps=1, caption_dropout_rate=0.1,
+            first_frame_dropout_rate=0.0,
+            lora_dropout=0.0, fork_targets=None, block_targets=None,
+            resume_from=None, boundary_ratio=0.875,
+            active_expert="low_noise",
+        )
+
+        # Clear initial calls from constructor
+        backend.setup_block_swap_calls.clear()
+
+        # Call _ensure_expert_model directly (it only runs with real dataset)
+        orch._ensure_expert_model(phase)
+
+        # setup_block_swap should be called once during expert switch
+        assert len(backend.setup_block_swap_calls) == 1
+        assert backend.setup_block_swap_calls[0]["blocks_to_swap"] == 10
 
     def test_block_swap_not_called_after_peft_wrapping(self, tmp_path):
         """Block swap is NOT re-registered after PEFT wrapping in _setup_phase_lora.
