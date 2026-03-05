@@ -24,9 +24,12 @@ delegated to ModelBackend and InferencePipeline protocols.
 
 from __future__ import annotations
 
+import logging
 import random
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 from flimmer.training.checkpoint import CheckpointManager, TrainingState
 from flimmer.training.errors import (
@@ -653,24 +656,37 @@ class TrainingOrchestrator:
         """
         # Group parameters: LoRA+ gives B-matrix higher LR
         loraplus_ratio = getattr(self._config.lora, "loraplus_lr_ratio", 1.0)
-        a_params = []
-        b_params = []
-        for name, param in self._model.named_parameters():
-            if not param.requires_grad:
-                continue
-            if ".lora_B." in name or ".lora_up." in name:
-                b_params.append(param)
-            else:
-                a_params.append(param)
 
-        param_groups: list[dict[str, Any]] = []
-        if a_params:
-            param_groups.append({"params": a_params, "lr": phase.learning_rate})
-        if b_params:
-            param_groups.append({
-                "params": b_params,
-                "lr": phase.learning_rate * loraplus_ratio,
-            })
+        if phase.optimizer_type == "adam_mini":
+            # Adam-mini handles parameter grouping internally via named_parameters()
+            # LoRA+ A/B splitting is incompatible
+            if loraplus_ratio != 1.0:
+                logger.warning(
+                    "LoRA+ lr_ratio=%.2f is ignored with adam_mini "
+                    "(it handles parameter grouping internally)",
+                    loraplus_ratio,
+                )
+            param_groups: list[dict[str, Any]] = []  # Not used — adam_mini gets model reference instead
+        else:
+            # Standard LoRA+ parameter grouping (A-matrix vs B-matrix)
+            a_params = []
+            b_params = []
+            for name, param in self._model.named_parameters():
+                if not param.requires_grad:
+                    continue
+                if ".lora_B." in name or ".lora_up." in name:
+                    b_params.append(param)
+                else:
+                    a_params.append(param)
+
+            param_groups: list[dict[str, Any]] = []
+            if a_params:
+                param_groups.append({"params": a_params, "lr": phase.learning_rate})
+            if b_params:
+                param_groups.append({
+                    "params": b_params,
+                    "lr": phase.learning_rate * loraplus_ratio,
+                })
 
         # Build optimizer
         optimizer_cfg = self._config.optimizer
@@ -682,6 +698,7 @@ class TrainingOrchestrator:
             betas=getattr(optimizer_cfg, "betas", None),
             eps=getattr(optimizer_cfg, "eps", 1e-8),
             optimizer_args=getattr(optimizer_cfg, "optimizer_args", None),
+            model=self._model,
         )
 
         # Compute total optimizer steps for this phase

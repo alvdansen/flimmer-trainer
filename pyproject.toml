@@ -54,6 +54,10 @@ wan = [
     "numpy>=1.24",
     "bitsandbytes>=0.43",
 ]
+optimizer = [
+    "torchao>=0.8",
+    "adam-mini>=1.1.1",
+]
 all = [
     "flimmer[video]",
     "flimmer[caption]",
@@ -62,6 +66,7 @@ all = [
     "flimmer[encoding]",
     "flimmer[training]",
     "flimmer[wan]",
+    "flimmer[optimizer]",
 ]
 dev = [
     "pytest>=7.0",

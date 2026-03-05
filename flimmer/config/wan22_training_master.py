@@ -35,6 +35,8 @@ VALID_OPTIMIZERS: set[str] = {
     "prodigy",
     "ademamix",
     "schedule_free_adamw",
+    "cpu_offload",
+    "adam_mini",
 }
 """Supported optimizer types.
 
@@ -45,6 +47,8 @@ VALID_OPTIMIZERS: set[str] = {
 - prodigy: learning-rate-free optimizer. Sets LR automatically (must use lr=1.0).
 - ademamix: dual-EMA momentum (Apple). Untested on Wan, needs long runs to benefit.
 - schedule_free_adamw: schedule-free Adam (Meta). Eliminates LR scheduler. Untested on Wan.
+- cpu_offload: CPU-offloaded AdamW via torchao. Moves optimizer state to system RAM. Requires torchao.
+- adam_mini: Memory-efficient Adam with Hessian-aware partitioning. 45-50% optimizer state reduction. Requires adam-mini.
 """
 
 VALID_SCHEDULERS: set[str] = {

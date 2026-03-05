@@ -5,7 +5,8 @@ phase. Each expert phase gets its own fresh optimizer — unified momentum
 doesn't transfer to expert-specific gradient landscapes.
 
 Optimizer support:
-    adamw, adamw8bit, adafactor, came, prodigy, ademamix, schedule_free_adamw
+    adamw, adamw8bit, adafactor, came, prodigy, ademamix, schedule_free_adamw,
+    cpu_offload, adam_mini
 
 Scheduler support:
     cosine_with_min_lr, constant, constant_with_warmup, polynomial, rex
@@ -33,6 +34,7 @@ def build_optimizer(
     betas: list[float] | None = None,
     eps: float | list[float] = 1e-8,
     optimizer_args: dict | None = None,
+    model: Any = None,
 ) -> Any:
     """Build an optimizer instance for a training phase.
 
@@ -48,6 +50,9 @@ def build_optimizer(
         betas: Adam beta parameters [beta1, beta2] or [beta1, beta2, beta3].
         eps: Adam epsilon for numerical stability.
         optimizer_args: Additional kwargs passed to the optimizer constructor.
+        model: Model reference. Needed only for adam_mini (named_parameters
+            access for Hessian-aware parameter partitioning). Ignored by
+            all other optimizer types.
 
     Returns:
         Optimizer instance.
@@ -173,6 +178,62 @@ def build_optimizer(
                     "schedule_free_adamw requires schedulefree. "
                     "Install with: pip install schedulefree"
                 )
+
+        elif optimizer_type == "cpu_offload":
+            try:
+                from torchao.prototype.low_bit_optim import CPUOffloadOptimizer
+                import torch.optim
+                return CPUOffloadOptimizer(
+                    params,
+                    torch.optim.AdamW,
+                    offload_gradients=False,  # True breaks gradient accumulation
+                    lr=learning_rate,
+                    weight_decay=weight_decay,
+                    betas=tuple(betas[:2]),
+                    eps=eps if isinstance(eps, float) else eps[0],
+                    **optimizer_args,
+                )
+            except ImportError:
+                raise PhaseConfigError(
+                    "cpu_offload requires torchao. "
+                    "Install with: pip install torchao"
+                )
+
+        elif optimizer_type == "adam_mini":
+            try:
+                from adam_mini import Adam_mini
+            except ImportError:
+                raise PhaseConfigError(
+                    "adam_mini requires adam-mini. "
+                    "Install with: pip install adam-mini"
+                )
+            if model is None:
+                raise PhaseConfigError(
+                    "adam_mini requires model reference for named parameter access. "
+                    "This is a bug — please report it."
+                )
+            # Filter to trainable params only
+            trainable_named = [
+                (n, p) for n, p in model.named_parameters() if p.requires_grad
+            ]
+            optimizer = Adam_mini(
+                named_parameters=trainable_named,
+                lr=learning_rate,
+                betas=tuple(betas[:2]),
+                eps=eps if isinstance(eps, float) else eps[0],
+                weight_decay=weight_decay,
+                # Wan 2.2 architecture dimensions for Hessian partitioning
+                dim=5120,       # WAN_HIDDEN_DIM
+                n_heads=40,     # WAN_NUM_HEADS
+                n_kv_heads=40,  # Same as n_heads for Wan (no GQA)
+            )
+            # Add Wan-specific module names for correct parameter classification.
+            # Adam-mini lowercases param names and does substring matching.
+            optimizer.wqk_names.update({"to_q", "to_k"})
+            optimizer.wv_names.update({"to_v"})
+            optimizer.attn_proj_names.update({"to_out"})
+            optimizer.mlp_names.add("ffn")
+            return optimizer
 
         else:
             raise PhaseConfigError(
