@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Low VRAM Training
 status: active
-stopped_at: Completed 07-01-PLAN.md
-last_updated: "2026-03-05T16:58:47Z"
-last_activity: 2026-03-05 — Executed 07-01 (BlockSwapOffloader + blocks_to_swap config)
+stopped_at: Completed 07-02-PLAN.md
+last_updated: "2026-03-05T17:08:47Z"
+last_activity: 2026-03-05 — Executed 07-02 (Block swap training loop integration)
 progress:
   total_phases: 5
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 5
   completed_plans: 5
 ---
@@ -20,16 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-05)
 
 **Core value:** Complete video LoRA training pipeline — raw footage to trained LoRA checkpoint, now targeting 24GB consumer GPUs
-**Current focus:** Phase 7 in progress — Block Swapping (Plan 01 complete, Plan 02 next)
+**Current focus:** Phase 7 complete — Block Swapping. Ready for Phase 8 (Optimizer + Memory).
 
 ## Current Position
 
 Phase: 7 of 9 (Block Swapping) — v1.1
-Plan: 1 of 2 in current phase (07-01 complete)
-Status: BlockSwapOffloader class and blocks_to_swap config field complete. Plan 02 wires into training loop.
-Last activity: 2026-03-05 — Executed 07-01 (BlockSwapOffloader + blocks_to_swap config)
+Plan: 2 of 2 in current phase (07-02 complete, phase done)
+Status: Block swapping fully integrated into training pipeline. Phase 07 complete.
+Last activity: 2026-03-05 — Executed 07-02 (Block swap training loop integration)
 
-Progress: [████████░░] 80% (v1.1 milestone)
+Progress: [█████████░] 85% (v1.1 milestone)
 
 ## Performance Metrics
 
@@ -58,6 +58,7 @@ Progress: [████████░░] 80% (v1.1 milestone)
 | 06 | P01 | 7min | 2 | 5 |
 | 06 | P02 | 5min | 2 | 11 |
 | 07 | P01 | 4min | 2 | 4 |
+| 07 | P02 | 7min | 2 | 4 |
 
 ## Accumulated Context
 
@@ -71,6 +72,7 @@ Progress: [████████░░] 80% (v1.1 milestone)
 - [06-01]: PIL-based image encoding via _encode_image_as_latent, auto_self_reference for I2V on stills, I2V detection via reference.source != "none"
 - [06-02]: Repeat expansion at sampler level (index duplication) -- no extra disk/VRAM. CacheEntry.repeats defaults to 1 for backwards compat.
 - [07-01]: blocks_to_swap defaults to 0 (opt-in). Only Linear weights swapped; clamped at runtime to num_blocks - 1. Warning at >35 blocks.
+- [07-02]: Block swap NOT re-registered after PEFT wrapping (hooks persist through PEFT wrap). hasattr guard for non-Wan backend compat.
 
 ### Blockers/Concerns
 
@@ -80,9 +82,9 @@ Progress: [████████░░] 80% (v1.1 milestone)
 
 ## Session Continuity
 
-Last session: 2026-03-05T16:58:47Z
-Stopped at: Completed 07-01-PLAN.md
-Resume file: .planning/phases/07-block-swapping/07-01-SUMMARY.md
+Last session: 2026-03-05T17:08:47Z
+Stopped at: Completed 07-02-PLAN.md (Phase 07 complete)
+Resume file: .planning/phases/07-block-swapping/07-02-SUMMARY.md
 
 ## Git Workflow
 
