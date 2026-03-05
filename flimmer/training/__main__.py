@@ -16,11 +16,51 @@ Usage::
 from __future__ import annotations
 
 import argparse
+import logging
+import os
 import sys
+
+logger = logging.getLogger(__name__)
+
+
+def _configure_cuda_allocator() -> None:
+    """Configure the PyTorch CUDA memory allocator before torch is imported.
+
+    Sets ``expandable_segments:True`` in the ``PYTORCH_CUDA_ALLOC_CONF``
+    environment variable. This tells the CUDA caching allocator to use
+    expandable segments instead of fixed-size blocks, which significantly
+    reduces memory fragmentation during video training where tensor sizes
+    vary widely across bucketed resolutions.
+
+    Must be called BEFORE any ``import torch`` statement, because the
+    allocator configuration is read once at CUDA initialization time.
+
+    If the env var already contains ``expandable_segments``, the existing
+    value is preserved (the user or a wrapper script may have set it).
+    """
+    env_key = "PYTORCH_CUDA_ALLOC_CONF"
+    current = os.environ.get(env_key, "")
+
+    if "expandable_segments" in current:
+        logger.info("CUDA allocator config already set: %s", current)
+        return
+
+    if current:
+        new_value = f"{current},expandable_segments:True"
+    else:
+        new_value = "expandable_segments:True"
+
+    os.environ[env_key] = new_value
+    logger.info(
+        "Set PYTORCH_CUDA_ALLOC_CONF=%s to reduce memory fragmentation",
+        new_value,
+    )
 
 
 def cmd_train(args: argparse.Namespace) -> None:
     """Run training from a config file."""
+    _configure_cuda_allocator()
+
     from flimmer.config.training_loader import load_training_config
     from flimmer.training.loop import TrainingOrchestrator
 
