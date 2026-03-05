@@ -1340,6 +1340,17 @@ class TrainingLoopConfig(BaseModel):
             "Always on for video training — the memory savings are essential."
         ),
     )
+    blocks_to_swap: int = Field(
+        default=0,
+        ge=0,
+        description=(
+            "Number of transformer blocks to offload to CPU during forward/backward "
+            "passes. Reduces VRAM usage at the cost of training speed. "
+            "0 = no block swap (default). Higher values = more VRAM savings. "
+            "Maximum is num_blocks - 1 (39 for Wan). Values exceeding the model's "
+            "block count are clamped at runtime."
+        ),
+    )
     mixed_precision: str = Field(
         default=T2V_MIXED_PRECISION,
         description=(
