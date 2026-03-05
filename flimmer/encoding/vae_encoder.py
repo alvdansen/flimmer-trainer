@@ -24,6 +24,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from flimmer.dataset.discover import IMAGE_EXTENSIONS
 from flimmer.encoding.errors import EncoderError
 
 
@@ -151,8 +152,101 @@ class WanVaeEncoder:
                 f"Check that the path is correct."
             ) from e
 
+    def _encode_image_as_latent(
+        self,
+        image_path: Path,
+        target_width: int,
+        target_height: int,
+    ) -> dict[str, Any]:
+        """Encode a single image through VAE as a 1-frame target latent.
+
+        Same PIL-based loading and normalization as encode_reference_image(),
+        but returns {"latent": tensor} with the batch dimension kept — matching
+        the shape convention of video latents [1, C, 1, H//8, W//8].
+
+        This avoids invoking ffmpeg for single images, which is faster and
+        more reliable (ffmpeg can fail on unusual image formats).
+
+        Args:
+            image_path: Path to the image file (PNG, JPG, etc.).
+            target_width: Target width in pixels (must be multiple of 8).
+            target_height: Target height in pixels (must be multiple of 8).
+
+        Returns:
+            Dict with 'latent' key containing tensor of shape
+            [1, C, 1, H//8, W//8].
+
+        Raises:
+            EncoderError: If loading or encoding fails.
+        """
+        self._ensure_vae()
+
+        try:
+            import torch
+            from PIL import Image
+            import numpy as np
+        except ImportError as e:
+            raise EncoderError("wan_vae", f"Required packages not installed: {e}")
+
+        if not image_path.is_file():
+            raise EncoderError(
+                "wan_vae",
+                f"Image file not found: '{image_path}'"
+            )
+
+        try:
+            # Load and resize image
+            img = Image.open(image_path).convert("RGB")
+            if img.size != (target_width, target_height):
+                img = img.resize((target_width, target_height), Image.LANCZOS)
+
+            # Convert to tensor and normalize to [-1, 1]
+            pixels = np.array(img, dtype=np.float32)
+            pixels = (pixels / 127.5) - 1.0
+
+            # Reshape: [H, W, C] -> [1, C, 1, H, W] (batch=1, single frame)
+            pixels = np.transpose(pixels, (2, 0, 1))  # [C, H, W]
+            tensor = torch.from_numpy(pixels).unsqueeze(0).unsqueeze(2)  # [1, C, 1, H, W]
+
+            # Convert to model dtype and device
+            dtype_map = {
+                "bf16": torch.bfloat16,
+                "fp16": torch.float16,
+                "fp32": torch.float32,
+            }
+            dtype = dtype_map.get(self._dtype_str, torch.bfloat16)
+            tensor = tensor.to(dtype=dtype, device=self._device)
+
+            # Encode through VAE
+            with torch.no_grad():
+                latent_dist = self._vae.encode(tensor)
+                if hasattr(latent_dist, "latent_dist"):
+                    latent = latent_dist.latent_dist.sample()
+                elif hasattr(latent_dist, "sample"):
+                    latent = latent_dist.sample()
+                else:
+                    latent = latent_dist
+
+            # Apply scaling factor if the VAE uses one
+            if hasattr(self._vae.config, "scaling_factor"):
+                latent = latent * self._vae.config.scaling_factor
+
+            # Keep batch dimension: [1, C, 1, H//8, W//8]
+            return {"latent": latent.cpu()}
+
+        except EncoderError:
+            raise
+        except Exception as e:
+            raise EncoderError(
+                "wan_vae",
+                f"Image encoding failed for '{image_path}': {e}"
+            ) from e
+
     def encode(self, input_path: str, **kwargs: Any) -> dict[str, Any]:
         """Encode a video or image through the VAE.
+
+        Images (.jpg, .png, etc.) are routed through PIL for efficiency.
+        Videos are routed through ffmpeg for frame extraction.
 
         Args:
             input_path: Path to the video or image file.
@@ -185,6 +279,12 @@ class WanVaeEncoder:
                 f"Dimensions must be multiples of 8, got {target_width}x{target_height}. "
                 f"Try {target_width - target_width % 8}x{target_height - target_height % 8} instead."
             )
+
+        # Route images through PIL (faster, no subprocess overhead)
+        input_p = Path(input_path)
+        if target_frames == 1 or input_p.suffix.lower() in IMAGE_EXTENSIONS:
+            return self._encode_image_as_latent(input_p, target_width, target_height)
+
         frame_extraction = kwargs.get("frame_extraction", "head")
 
         try:

@@ -131,13 +131,25 @@ def snap_resolution(
 def _expand_image_sample(
     sample: DiscoveredSample,
     step: int = 16,
+    auto_self_reference: bool = False,
 ) -> list[ExpandedSample]:
-    """Expand an image target into a single 1-frame sample."""
+    """Expand an image target into a single 1-frame sample.
+
+    When auto_self_reference is True and the sample has no explicit
+    reference image, use the target image as its own first-frame
+    conditioning. This enables I2V training on still images without
+    requiring users to manually set up reference images.
+    """
     w, h = snap_resolution(
         sample.width if sample.width > 0 else 512,
         sample.height if sample.height > 0 else 512,
         step,
     )
+
+    # Auto self-reference: image IS its own first frame for I2V
+    reference = sample.reference
+    if auto_self_reference and reference is None:
+        reference = sample.target
 
     sample_id = f"{sample.stem}_1x{h}x{w}"
 
@@ -147,7 +159,7 @@ def _expand_image_sample(
         target=sample.target,
         target_role=sample.target_role,
         caption=sample.caption,
-        reference=sample.reference,
+        reference=reference,
         bucket_width=w,
         bucket_height=h,
         bucket_frames=1,
@@ -236,6 +248,7 @@ def expand_samples(
     include_head_frame: bool = False,
     step: int = 16,
     image_repeat: int = 1,
+    auto_self_reference: bool = False,
 ) -> list[ExpandedSample]:
     """Expand a list of DiscoveredSamples into ExpandedSamples.
 
@@ -253,6 +266,9 @@ def expand_samples(
             than multi-frame videos, so this lets users increase their presence
             in training batches (e.g., image_repeat=5 means each image appears
             5x per epoch). Multiplies with dataset-level repeats. Default 1.
+        auto_self_reference: When True, image samples with no explicit reference
+            use themselves as first-frame conditioning. Enables zero-config I2V
+            training on still images. Default False.
 
     Returns:
         List of ExpandedSamples, potentially many per input sample.
@@ -271,7 +287,11 @@ def expand_samples(
 
     for sample in samples:
         if sample.target_role == SampleRole.TARGET_IMAGE:
-            img_expanded = _expand_image_sample(sample, step=step)
+            img_expanded = _expand_image_sample(
+                sample,
+                step=step,
+                auto_self_reference=auto_self_reference,
+            )
             if image_repeat > 1:
                 img_expanded = [
                     s.model_copy(update={"repeats": s.repeats * image_repeat})
