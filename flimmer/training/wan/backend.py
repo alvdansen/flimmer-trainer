@@ -27,15 +27,12 @@ Requires: torch, diffusers, peft (the 'wan' dependency group).
 from __future__ import annotations
 
 import gc
-import logging
 from pathlib import Path
 from typing import Any
 
 from flimmer.training.errors import ModelBackendError
 from flimmer.training.noise import FlowMatchingSchedule, get_expert_masks
 from flimmer.training.wan.constants import WAN_EXPERT_SUBFOLDERS, WAN_SINGLE_SUBFOLDER
-
-logger = logging.getLogger(__name__)
 
 
 def _clean_gpu_memory() -> None:
@@ -747,14 +744,6 @@ class WanModelBackend:
         For PEFT models, enables on the base model to ensure the flag
         reaches the actual transformer blocks.
 
-        IMPORTANT: use_reentrant=False is enforced on all paths. Reentrant
-        checkpointing silently produces zero gradients for frozen parameters,
-        which breaks PEFT LoRA training (base model params are frozen, only
-        adapter params should receive gradients). The diffusers API
-        (enable_gradient_checkpointing) already defaults to use_reentrant=False
-        internally. The transformers fallback (gradient_checkpointing_enable)
-        requires explicit kwargs to override its use_reentrant=True default.
-
         Args:
             model: Loaded WanTransformer3DModel or PeftModel wrapper.
         """
@@ -765,12 +754,8 @@ class WanModelBackend:
 
         if hasattr(base_model, "enable_gradient_checkpointing"):
             base_model.enable_gradient_checkpointing()
-            logger.info("Enabled gradient checkpointing with use_reentrant=False")
         elif hasattr(base_model, "gradient_checkpointing_enable"):
-            base_model.gradient_checkpointing_enable(
-                gradient_checkpointing_kwargs={"use_reentrant": False}
-            )
-            logger.info("Enabled gradient checkpointing with use_reentrant=False")
+            base_model.gradient_checkpointing_enable()
 
     def get_noise_schedule(self) -> FlowMatchingSchedule:
         """Return the flow matching noise schedule for Wan.
