@@ -48,7 +48,10 @@ Plans:
   2. Training batches contain a configurable mix of image and video samples controlled by `image_repeat` in the data config
   3. In I2V mode, single-frame image samples use themselves as the first-frame conditioning input (no separate reference required)
   4. A dataset with only images trains successfully (edge case: pure stills dataset)
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 06-01-PLAN.md — PIL-based image encoding in VAE + auto self-referencing for I2V
+- [ ] 06-02-PLAN.md — image_repeat config field + BucketBatchSampler repeats support
 
 ### Phase 7: Block Swapping
 **Goal**: Users can train Wan 2.2 I2V/T2V LoRA on a 24GB GPU by offloading inactive transformer blocks to CPU during forward/backward passes
@@ -92,7 +95,7 @@ Plans:
 | 3. Local Run Scripts | v1.0 | 3/3 | Complete | 2026-03-04 |
 | 4. Documentation | v1.0 | 2/2 | Complete | 2026-03-04 |
 | 5. Training Correctness | v1.1 | 0/1 | Planned | - |
-| 6. Image Training Support | v1.1 | 0/? | Not started | - |
+| 6. Image Training Support | v1.1 | 0/2 | Planned | - |
 | 7. Block Swapping | v1.1 | 0/? | Not started | - |
 | 8. Optimizer Improvements | v1.1 | 0/? | Not started | - |
 | 9. VRAM Estimation and User Experience | v1.1 | 0/? | Not started | - |
