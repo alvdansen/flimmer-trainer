@@ -4,6 +4,21 @@ milestone: v1.1
 milestone_name: Low VRAM Training
 status: active
 stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-03-05T04:44:45.847Z"
+last_activity: 2026-03-05 — Executed 05-01 (gradient checkpointing + CUDA allocator)
+progress:
+  total_phases: 5
+  completed_phases: 1
+  total_plans: 3
+  completed_plans: 1
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.1
+milestone_name: Low VRAM Training
+status: active
+stopped_at: Completed 05-01-PLAN.md
 last_updated: "2026-03-05T04:41:17.860Z"
 last_activity: 2026-03-05 — Executed Phase 5 Plan 01 (FIX-01 + FIX-02 training correctness fixes)
 progress:
