@@ -16,51 +16,11 @@ Usage::
 from __future__ import annotations
 
 import argparse
-import logging
-import os
 import sys
-
-logger = logging.getLogger(__name__)
-
-
-def _configure_cuda_allocator() -> None:
-    """Configure the PyTorch CUDA memory allocator to reduce fragmentation.
-
-    Sets PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True if not already
-    configured. This MUST run before any torch import because the CUDA
-    allocator reads the env var only at initialization time.
-
-    expandable_segments:True allows the allocator to expand existing
-    memory segments instead of allocating new fixed blocks. This
-    dramatically reduces fragmentation-induced OOMs during video LoRA
-    training where activation sizes vary across resolution buckets.
-
-    Shell wrappers (scripts/train.sh, scripts/train.ps1) also set this
-    env var, but this function ensures it's configured even when users
-    invoke ``python -m flimmer.training train`` directly.
-    """
-    current = os.environ.get("PYTORCH_CUDA_ALLOC_CONF", "")
-
-    if "expandable_segments" in current:
-        logger.info("CUDA allocator config already set: %s", current)
-        return
-
-    if current:
-        new_value = f"{current},expandable_segments:True"
-    else:
-        new_value = "expandable_segments:True"
-
-    os.environ["PYTORCH_CUDA_ALLOC_CONF"] = new_value
-    logger.info(
-        "Set PYTORCH_CUDA_ALLOC_CONF=%s to reduce memory fragmentation",
-        new_value,
-    )
 
 
 def cmd_train(args: argparse.Namespace) -> None:
     """Run training from a config file."""
-    _configure_cuda_allocator()
-
     from flimmer.config.training_loader import load_training_config
     from flimmer.training.loop import TrainingOrchestrator
 
