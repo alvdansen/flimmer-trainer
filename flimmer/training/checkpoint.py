@@ -438,4 +438,13 @@ class CheckpointManager:
         if state.phase_index >= len(phases):
             return None
 
+        # Validate that the saved phase type matches the phase at that index.
+        # Project-based runs invoke each phase as a separate training call,
+        # so stale state from a previous phase (e.g. full_noise) must not
+        # be applied to the current phase (e.g. high_noise).
+        current_phase = phases[state.phase_index]
+        if hasattr(current_phase, "phase_type") and state.phase_type:
+            if current_phase.phase_type.value != state.phase_type:
+                return None
+
         return (state.phase_index, state.epoch, state)
