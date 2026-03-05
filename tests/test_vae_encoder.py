@@ -15,11 +15,19 @@ import pytest
 from flimmer.encoding.errors import EncoderError
 from flimmer.encoding.vae_encoder import WanVaeEncoder
 
+_has_torch = False
+try:
+    import torch  # noqa: F401
+    _has_torch = True
+except ImportError:
+    pass
+
 
 # ---------------------------------------------------------------------------
 # encode_reference_image
 # ---------------------------------------------------------------------------
 
+@pytest.mark.skipif(not _has_torch, reason="PyTorch not installed")
 class TestEncodeReferenceImage:
     """Tests for WanVaeEncoder.encode_reference_image with mocked VAE."""
 

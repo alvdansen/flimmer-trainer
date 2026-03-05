@@ -400,6 +400,17 @@ class TestRunSummaryWithFrozenChecks:
 # Tests: Checkpoint resume infrastructure (Plan 04-01)
 # ---------------------------------------------------------------------------
 
+_has_torch = False
+try:
+    import torch  # noqa: F401
+    _has_torch = True
+except ImportError:
+    pass
+
+_requires_torch = pytest.mark.skipif(not _has_torch, reason="PyTorch not installed")
+
+
+@_requires_torch
 class TestSaveFullState:
     """_save_full_state creates training_checkpoint.pt with correct keys."""
 
@@ -435,6 +446,7 @@ class TestSaveFullState:
         assert "rng_torch_cpu" in bundle
 
 
+@_requires_torch
 class TestRestoreFullState:
     """_restore_full_state loads and applies optimizer/scheduler/RNG state."""
 

@@ -80,6 +80,15 @@ def _has_scenedetect() -> bool:
         return False
 
 
+def _has_torch() -> bool:
+    """Check if PyTorch is importable."""
+    try:
+        import torch  # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
 # ---------------------------------------------------------------------------
 # Skip markers
 # ---------------------------------------------------------------------------
@@ -92,6 +101,11 @@ requires_ffmpeg = pytest.mark.skipif(
 requires_scenedetect = pytest.mark.skipif(
     not _has_scenedetect(),
     reason="PySceneDetect not installed — install with: pip install scenedetect[opencv]",
+)
+
+requires_torch = pytest.mark.skipif(
+    not _has_torch(),
+    reason="PyTorch not installed — install with: pip install torch",
 )
 
 
