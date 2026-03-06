@@ -187,6 +187,19 @@ class TrainingOrchestrator:
         # Print the training plan
         self._logger.print_training_plan(self._phases)
 
+        # Pre-flight VRAM estimation — always log, warn if over GPU capacity.
+        # Runs for both dry_run and real training (estimation is lightweight).
+        # Wrapped in try/except so estimation failures never block training.
+        try:
+            from flimmer.training.vram import VRAMEstimator
+
+            estimator = VRAMEstimator.from_config(self._config)
+            estimate = estimator.estimate()
+            estimator.log_estimate(estimate)
+            estimator.warn_if_over(estimate)
+        except Exception as e:
+            logger.debug("VRAM estimation skipped: %s", e)
+
         if dry_run:
             return
 

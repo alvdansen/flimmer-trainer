@@ -1,8 +1,9 @@
 """CLI for the Flimmer training pipeline.
 
 Commands:
-    train       Run training from a config file
-    plan        Print the resolved training plan without training (dry run)
+    train          Run training from a config file
+    plan           Print the resolved training plan without training (dry run)
+    estimate-vram  Estimate GPU VRAM usage from a training config
 
 Usage::
 
@@ -11,6 +12,9 @@ Usage::
 
     # Dry run — resolve phases and print plan
     python -m flimmer.training plan --config path/to/train.yaml
+
+    # Pre-flight VRAM estimation
+    python -m flimmer.training estimate-vram --config path/to/train.yaml --gpu-memory 24
 """
 
 from __future__ import annotations
@@ -112,6 +116,34 @@ def cmd_plan(args: argparse.Namespace) -> None:
         inference_pipeline=None,
     )
     orchestrator.run(dry_run=True)
+
+
+def cmd_estimate_vram(args: argparse.Namespace) -> None:
+    """Estimate GPU VRAM usage from a training config.
+
+    Loads the training config, extracts estimation parameters, and prints
+    a component-wise VRAM breakdown. Optionally accepts GPU memory size
+    and resolution/frame overrides for planning without a data config.
+
+    No GPU required — runs purely from config parameters.
+    """
+    from flimmer.config.training_loader import load_training_config
+    from flimmer.training.vram import VRAMEstimator
+
+    config = load_training_config(args.config)
+
+    # Create estimator from config, then apply CLI overrides
+    estimator = VRAMEstimator.from_config(config)
+
+    # Apply resolution/frame overrides if provided
+    if getattr(args, "resolution", None) is not None:
+        estimator._resolution = args.resolution
+    if getattr(args, "frames", None) is not None:
+        estimator._frame_count = args.frames
+
+    estimate = estimator.estimate()
+    gpu_memory = getattr(args, "gpu_memory", None)
+    estimator.print_report(estimate, gpu_memory_gb=gpu_memory)
 
 
 def _load_dataset(config: object) -> object:
@@ -318,6 +350,35 @@ def build_parser() -> argparse.ArgumentParser:
         help="Path to a project YAML (shows plan with phase overrides applied).",
     )
 
+    # ─── estimate-vram ───
+    vram_parser = subparsers.add_parser(
+        "estimate-vram",
+        help="Estimate GPU VRAM usage from a training config.",
+    )
+    vram_parser.add_argument(
+        "--config", "-c",
+        required=True,
+        help="Path to the Flimmer training config YAML.",
+    )
+    vram_parser.add_argument(
+        "--gpu-memory",
+        type=float,
+        default=None,
+        help="GPU memory in GB (e.g. 24 for RTX 4090). Auto-detected if omitted.",
+    )
+    vram_parser.add_argument(
+        "--resolution",
+        type=int,
+        default=None,
+        help="Override video resolution height (e.g. 480, 720). Uses data config if omitted.",
+    )
+    vram_parser.add_argument(
+        "--frames",
+        type=int,
+        default=None,
+        help="Override frame count (e.g. 49, 81). Uses data config if omitted.",
+    )
+
     return parser
 
 
@@ -329,6 +390,7 @@ def main() -> None:
     commands = {
         "train": cmd_train,
         "plan": cmd_plan,
+        "estimate-vram": cmd_estimate_vram,
     }
 
     try:

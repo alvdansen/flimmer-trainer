@@ -465,3 +465,110 @@ class TestEstimatorReporting:
             estimator.warn_if_over(est, gpu_memory_gb=200.0)
         warning_records = [r for r in caplog.records if r.levelno == logging.WARNING]
         assert len(warning_records) == 0
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Integration tests: from_config(), CLI, parser
+# ──────────────────────────────────────────────────────────────────────
+
+
+class TestFromConfig:
+    """VRAMEstimator.from_config() classmethod."""
+
+    def test_extracts_fields_from_mock_config(self):
+        """from_config() correctly extracts fields from a mock FlimmerTrainingConfig."""
+        config = MagicMock()
+        config.training.base_model_precision = "fp8"
+        config.training.blocks_to_swap = 20
+        config.training.batch_size = 1
+        config.lora.rank = 32
+        config.optimizer.type = "adamw8bit"
+        config.model.variant = "2.2_i2v"
+        config.data_config = None  # No data config
+
+        estimator = VRAMEstimator.from_config(config)
+
+        assert estimator._precision == "fp8"
+        assert estimator._blocks_to_swap == 20
+        assert estimator._rank == 32
+        assert estimator._optimizer_type == "adamw8bit"
+        assert estimator._is_i2v is True
+        assert estimator._batch_size == 1
+
+    def test_defaults_without_optional_fields(self):
+        """from_config() uses sensible defaults when config fields are missing."""
+        config = MagicMock(spec=[])  # Empty mock — no attributes
+        config.training = None
+        config.lora = None
+        config.optimizer = None
+        config.model = None
+        config.data_config = None
+
+        estimator = VRAMEstimator.from_config(config)
+
+        assert estimator._precision == "bf16"
+        assert estimator._blocks_to_swap == 0
+        assert estimator._rank == 16
+        assert estimator._optimizer_type == "adamw8bit"
+        assert estimator._is_i2v is False
+
+
+class TestCLIParser:
+    """CLI parser accepts estimate-vram command."""
+
+    def test_parser_accepts_estimate_vram(self):
+        """build_parser() recognizes 'estimate-vram' as a valid subcommand."""
+        from flimmer.training.__main__ import build_parser
+
+        parser = build_parser()
+        args = parser.parse_args(["estimate-vram", "--config", "train.yaml"])
+        assert args.command == "estimate-vram"
+        assert args.config == "train.yaml"
+
+    def test_parser_accepts_gpu_memory_flag(self):
+        """estimate-vram parser accepts --gpu-memory flag."""
+        from flimmer.training.__main__ import build_parser
+
+        parser = build_parser()
+        args = parser.parse_args([
+            "estimate-vram", "--config", "train.yaml", "--gpu-memory", "24",
+        ])
+        assert args.gpu_memory == 24.0
+
+    def test_parser_accepts_resolution_and_frames(self):
+        """estimate-vram parser accepts --resolution and --frames flags."""
+        from flimmer.training.__main__ import build_parser
+
+        parser = build_parser()
+        args = parser.parse_args([
+            "estimate-vram", "-c", "train.yaml",
+            "--resolution", "720", "--frames", "81",
+        ])
+        assert args.resolution == 720
+        assert args.frames == 81
+
+    def test_cmd_estimate_vram_calls_print_report(self):
+        """cmd_estimate_vram loads config and calls print_report."""
+        from flimmer.training.__main__ import cmd_estimate_vram
+
+        mock_config = MagicMock()
+        mock_config.training.base_model_precision = "fp8"
+        mock_config.training.blocks_to_swap = 0
+        mock_config.training.batch_size = 1
+        mock_config.lora.rank = 16
+        mock_config.optimizer.type = "adamw8bit"
+        mock_config.model.variant = "2.2_t2v"
+        mock_config.data_config = None
+
+        args = MagicMock()
+        args.config = "train.yaml"
+        args.gpu_memory = 24.0
+        args.resolution = None
+        args.frames = None
+
+        with patch(
+            "flimmer.config.training_loader.load_training_config",
+            return_value=mock_config,
+        ) as mock_load:
+            cmd_estimate_vram(args)
+            mock_load.assert_called_once_with("train.yaml")
