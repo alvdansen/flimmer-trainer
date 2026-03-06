@@ -223,13 +223,13 @@ class TestVRAMEstimator:
             frame_count=49,
         )
         est = estimator.estimate()
-        # Model weights ~28 GB at bf16, plus activations, LoRA, grads, optimizer, overhead
-        # Total should be roughly 35-50 GB range (the plan says ~42 GB)
+        # Model weights: 14B params * 2 bytes = ~26 GiB (~28 GB decimal)
+        # Plus activations, LoRA, grads, optimizer, overhead => total ~35-50 GiB
         assert 35.0 < est.total_gb < 50.0
-        assert est.model_weights_gb == pytest.approx(28.6, abs=1.5)
+        assert est.model_weights_gb == pytest.approx(26.1, abs=1.5)
 
-    def test_t2v_fp8_model_weight_around_14gb(self):
-        """T2V fp8 config estimates ~14 GB model weight (half of bf16)."""
+    def test_t2v_fp8_model_weight_around_13gb(self):
+        """T2V fp8 config estimates ~13 GiB model weight (half of bf16)."""
         estimator = VRAMEstimator(
             precision="fp8",
             blocks_to_swap=0,
@@ -241,7 +241,8 @@ class TestVRAMEstimator:
             frame_count=49,
         )
         est = estimator.estimate()
-        assert est.model_weights_gb == pytest.approx(14.3, abs=1.0)
+        # 14B params * 1 byte = ~13.0 GiB
+        assert est.model_weights_gb == pytest.approx(13.0, abs=1.0)
 
     def test_block_swap_20_at_fp8_saves_about_7gb(self):
         """blocks_to_swap=20 at fp8 subtracts ~7 GB (20 * ~350 MB)."""
