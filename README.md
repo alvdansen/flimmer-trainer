@@ -12,9 +12,20 @@ The data preparation tools are **standalone** — they produce standard output f
 
 ## Quick Start
 
-### Using scripts (recommended for getting started)
+### RunPod (fastest way to start)
 
-**Linux / Cloud GPUs:**
+```bash
+cd /workspace
+git clone https://github.com/alvdansen/flimmer-trainer.git
+bash /workspace/flimmer-trainer/runpod/setup.sh --variant 2.2_i2v   # install + download weights
+python /workspace/flimmer-trainer/runpod/train.py --config my_train.yaml  # encode + train
+```
+
+See [RunPod Quickstart](runpod/README.md) for full guide.
+
+### Local setup (Linux / Windows)
+
+**Linux:**
 ```bash
 bash scripts/setup.sh --variant 2.2_i2v         # install deps + download weights
 bash scripts/prepare.sh --config train.yaml      # pre-encode latents + text
