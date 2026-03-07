@@ -1,0 +1,49 @@
+# ══════════════════════════════════════════════════════════════════════
+# ENOCHIATRON Dataset Config — TRON 1982 Digital World Style LoRA
+# ══════════════════════════════════════════════════════════════════════
+#
+# 1027 clips from TRON (1982) 4K HDR, prepared with Klipbok.
+# 1590x720 @ 16fps, stem-matched .txt captions (1026/1027 captioned).
+# Flat layout: .mp4 + .txt side by side in tron_digital/.
+#
+# Target: Meridian (Windows) — C:\Falco\ENOCHIATRON\dataset\tron_digital\
+
+dataset:
+  name: enochiatron
+  use_case: style                          # TRON visual aesthetic
+  description: >-
+    TRON (1982) digital world style LoRA. 4K HDR source processed through
+    Klipbok dataset curation pipeline. Covers light cycles, digital
+    landscapes, MCP, recognizers, and the iconic neon-grid aesthetic.
+
+datasets:
+  - path: C:\Falco\ENOCHIATRON\dataset\tron_digital
+    repeats: 1
+
+video:
+  fps: 16                                  # Matches source (already 16fps)
+  resolution: 720                          # Matches source (1590x720)
+  frame_count: auto                        # Accept clip lengths as-is
+  max_frames: 81                           # ~5s max at 16fps
+
+controls:
+  text:
+    format: txt                            # Sidecar .txt per clip
+    anchor_word: ENOCHIATRON               # Trigger word for the style
+    required: false                        # 1 clip (scene531) has no caption
+    max_tokens: 512
+  images:
+    reference:
+      source: none                         # T2V only — no reference images
+
+quality:
+  min_resolution: 720
+
+metadata:
+  source: "TRON (1982) 4K HDR Blu-ray rip"
+  tags:
+    - tron
+    - style
+    - retro-digital
+    - neon
+    - 1982

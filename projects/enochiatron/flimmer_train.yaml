@@ -1,0 +1,91 @@
+# ══════════════════════════════════════════════════════════════════════
+# ENOCHIATRON Training Config — LTX-2.3 T2V Style LoRA
+# ══════════════════════════════════════════════════════════════════════
+#
+# TRON 1982 digital-world style LoRA on LTX-2.3.
+# Target GPU: Meridian A6000 48GB with int8 quantization.
+#
+# Dataset: 1027 clips @ 1590x720, 16fps, ~2-5s each.
+# Estimated: ~1027 steps/epoch × 5 epochs ÷ 4 grad_accum = ~1284 optimizer steps.
+
+
+# ── Model & Data ─────────────────────────────────────────────────────
+
+model:
+  variant: 2.3_t2v
+  family: ltx
+  path: Lightricks/LTX-2.3              # Downloaded via ltx-core
+  quantization: int8                     # ~12GB model → fits A6000
+
+data_config: ./flimmer_data.yaml
+
+
+# ── LoRA Structure ───────────────────────────────────────────────────
+
+lora:
+  rank: 32
+  alpha: 32                              # alpha/rank = 1.0
+  loraplus_lr_ratio: 4.0
+  dropout: 0.05
+  target_modules: null                   # Use variant default (8 targets)
+
+
+# ── Optimizer ────────────────────────────────────────────────────────
+
+optimizer:
+  type: adamw8bit
+  learning_rate: 1e-4
+  weight_decay: 0.01
+  betas: [0.9, 0.999]
+  eps: 1e-8
+  max_grad_norm: 1.0
+
+
+# ── Scheduler ────────────────────────────────────────────────────────
+
+scheduler:
+  type: cosine_with_min_lr
+  warmup_steps: 100
+  min_lr_ratio: 0.01
+
+
+# ── Training ─────────────────────────────────────────────────────────
+
+training:
+  mixed_precision: bf16
+  gradient_checkpointing: true
+  seed: 42
+  unified_epochs: 5
+  batch_size: 1
+  gradient_accumulation_steps: 4         # Effective batch = 4
+  caption_dropout_rate: 0.10
+
+
+# ── MoE ──────────────────────────────────────────────────────────────
+
+moe:
+  enabled: false
+
+
+# ── Checkpoints ──────────────────────────────────────────────────────
+
+save:
+  save_every_n_epochs: 1
+  output_dir: ./output
+  name: enochiatron_ltx23
+  save_last: true
+  max_checkpoints: 5
+  format: safetensors
+
+
+# ── Logging ──────────────────────────────────────────────────────────
+
+logging:
+  backends: [console]
+  log_every_n_steps: 10
+
+
+# ── Sampling ─────────────────────────────────────────────────────────
+
+sampling:
+  enabled: false
