@@ -23,5 +23,9 @@ LTX_VARIANT_DEFAULTS: dict[str, dict] = {
         "training": {
             "mixed_precision": "bf16",
         },
+        "moe": {
+            "enabled": False,
+            "fork_enabled": False,
+        },
     },
 }
