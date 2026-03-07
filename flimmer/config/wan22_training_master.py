@@ -786,6 +786,14 @@ class ModelConfig(BaseModel):
         gt=0,
         description="Total noise schedule steps. 1000 for all Wan models.",
     )
+    quantization: str | None = Field(
+        default=None,
+        description=(
+            "Weight quantization mode for model loading. Options: 'int8', 'fp8'. "
+            "Reduces VRAM usage at the cost of some precision. "
+            "Uses optimum-quanto for LTX models."
+        ),
+    )
 
     # Variant validation is handled by the loader, which knows
     # which variants are supported (checked against VARIANT_DEFAULTS keys).

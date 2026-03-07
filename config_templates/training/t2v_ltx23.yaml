@@ -1,0 +1,109 @@
+# ══════════════════════════════════════════════════════════════════════
+# Flimmer Training Config — LTX-2.3 T2V LoRA
+# ══════════════════════════════════════════════════════════════════════
+#
+# LTX-2.3 is a ~22B parameter asymmetric dual-stream DiT from Lightricks.
+# It uses ltx-core (not standard diffusers) for model loading, Gemma 3-12B
+# text encoder, 128-channel video VAE, and shifted logit-normal noise.
+#
+# This template is configured for an A6000 48GB with int8 quantization.
+# Adjust quantization and batch size for your VRAM budget.
+
+
+# ── Model & Data ─────────────────────────────────────────────────────
+
+model:
+  variant: 2.3_t2v                           # LTX 2.3 text-to-video
+  family: ltx                                # Routes to LTX backend
+
+  # HuggingFace repo — ltx-core downloads automatically
+  path: Lightricks/LTX-2.3
+
+  # Quantization — int8 reduces ~46GB model to ~12GB
+  quantization: int8                         # null | int8 | fp8
+
+  # Architecture auto-fills from variant:
+  # in_channels: 128                         # VAE latent channels
+  # num_layers: 48                           # Transformer blocks
+  # is_moe: false                            # Single transformer
+
+data_config: ./flimmer_data.yaml
+
+
+# ── LoRA Structure ───────────────────────────────────────────────────
+
+lora:
+  rank: 32                                   # LoRA rank
+  alpha: 32                                  # alpha/rank = 1.0 scaling
+  loraplus_lr_ratio: 4.0                     # B-matrix LR multiplier
+  dropout: 0.05                              # Regularization
+
+  # LTX targets self-attn (attn1) and cross-attn (attn2) projections.
+  # null = variant default (8 video attention targets)
+  target_modules: null
+
+
+# ── Optimizer ────────────────────────────────────────────────────────
+
+optimizer:
+  type: adamw8bit                            # Memory-efficient
+  learning_rate: 1e-4                        # LTX community standard
+  weight_decay: 0.01
+  betas: [0.9, 0.999]
+  eps: 1e-8
+  max_grad_norm: 1.0
+
+
+# ── Scheduler ────────────────────────────────────────────────────────
+
+scheduler:
+  type: cosine_with_min_lr
+  warmup_steps: 100
+  min_lr_ratio: 0.01
+
+
+# ── Training ─────────────────────────────────────────────────────────
+
+training:
+  mixed_precision: bf16
+  gradient_checkpointing: true
+  seed: 42
+
+  # LTX uses shifted logit-normal timestep sampling internally.
+  # The backend handles this — no timestep_sampling field needed.
+  unified_epochs: 5                          # Total training epochs
+  batch_size: 1                              # VRAM-constrained
+  gradient_accumulation_steps: 4             # Effective batch = 4
+  caption_dropout_rate: 0.10                 # T2V standard
+
+
+# ── MoE ──────────────────────────────────────────────────────────────
+# LTX-2.3 is a single transformer — MoE is disabled.
+
+moe:
+  enabled: false
+
+
+# ── Checkpoints ──────────────────────────────────────────────────────
+
+save:
+  save_every_n_epochs: 1
+  output_dir: ./output
+  name: my_ltx_lora
+  save_last: true
+  max_checkpoints: 5
+  format: safetensors
+
+
+# ── Logging ──────────────────────────────────────────────────────────
+
+logging:
+  backends: [console]
+  log_every_n_steps: 10
+
+
+# ── Sampling ─────────────────────────────────────────────────────────
+# Disabled by default — LTX inference pipeline not yet integrated.
+
+sampling:
+  enabled: false
