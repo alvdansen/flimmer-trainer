@@ -37,6 +37,13 @@ from pydantic import ValidationError
 from flimmer.config.loader import FlimmerConfigError
 from flimmer.config.wan22_training_master import VARIANT_DEFAULTS, FlimmerTrainingConfig
 
+# Merge LTX variants if available
+try:
+    from flimmer.config.ltx23_training_master import LTX_VARIANT_DEFAULTS
+    VARIANT_DEFAULTS = {**VARIANT_DEFAULTS, **LTX_VARIANT_DEFAULTS}
+except ImportError:
+    pass  # LTX config module not available
+
 # The filename we look for when given a directory
 TRAINING_CONFIG_FILENAME = "flimmer_train.yaml"
 

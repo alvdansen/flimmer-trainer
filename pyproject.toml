@@ -54,6 +54,15 @@ wan = [
     "numpy>=1.24",
     "bitsandbytes>=0.43",
 ]
+ltx = [
+    "torch>=2.0",
+    "ltx-core>=0.1",
+    "peft>=0.12",
+    "accelerate>=0.30",
+    "safetensors>=0.4",
+    "numpy>=1.24",
+    "optimum-quanto>=0.2",
+]
 all = [
     "flimmer[video]",
     "flimmer[caption]",
@@ -62,6 +71,7 @@ all = [
     "flimmer[encoding]",
     "flimmer[training]",
     "flimmer[wan]",
+    "flimmer[ltx]",
 ]
 dev = [
     "pytest>=7.0",

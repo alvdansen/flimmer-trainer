@@ -103,17 +103,23 @@ def _load_dataset(config: object) -> object:
 def _resolve_backend(config: object) -> object:
     """Resolve the model backend from config.
 
-    Tries to load the real Wan backend. Falls back to stub if the
-    required packages are not installed or the variant is unknown.
+    Routes to the appropriate backend based on model family or variant prefix:
+    - family='ltx' or variant starting with '2.3' → LTX backend
+    - Everything else → Wan backend (default)
+
+    Falls back to stub if the required packages are not installed
+    or the variant is unknown.
 
     Args:
         config: FlimmerTrainingConfig instance.
 
     Returns:
-        ModelBackend implementation (WanModelBackend or _StubBackend).
+        ModelBackend implementation (LtxModelBackend, WanModelBackend,
+        or _StubBackend).
     """
     model = getattr(config, "model", None)
     variant = getattr(model, "variant", None) if model else None
+    family = getattr(model, "family", None) if model else None
 
     if variant is None:
         print(
@@ -122,6 +128,24 @@ def _resolve_backend(config: object) -> object:
         )
         return _StubBackend()
 
+    # Route by family (explicit) or infer from variant prefix
+    if family == "ltx" or (variant and variant.startswith("2.3")):
+        try:
+            from flimmer.training.ltx.registry import get_ltx_backend
+            print(f"Loading LTX model backend for variant '{variant}'...")
+            return get_ltx_backend(config)
+        except ImportError as e:
+            print(
+                f"Warning: Cannot load LTX backend ({e}).\n"
+                f"Install with: pip install 'flimmer[ltx]'\n"
+                f"Falling back to stub backend."
+            )
+            return _StubBackend()
+        except ValueError as e:
+            print(f"Warning: {e}\nFalling back to stub backend.")
+            return _StubBackend()
+
+    # Default: Wan backend
     try:
         from flimmer.training.wan.registry import get_wan_backend
         print(f"Loading Wan model backend for variant '{variant}'...")
@@ -153,6 +177,13 @@ def _resolve_inference_pipeline(config: object) -> object | None:
     """
     model = getattr(config, "model", None)
     if model is None:
+        return None
+
+    # LTX inference pipeline not yet implemented
+    family = getattr(model, "family", None)
+    variant = getattr(model, "variant", "")
+    if family == "ltx" or (variant and variant.startswith("2.3")):
+        print("Note: LTX inference pipeline not yet available. Sampling disabled.")
         return None
 
     try:
