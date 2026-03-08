@@ -304,6 +304,7 @@ docs/              Architecture, pipelines, config reference, guides
 - [Technical Architecture](docs/TECHNICAL_ARCHITECTURE.md) — How video LoRA training works and Flimmer's design
 - [Pipelines](docs/PIPELINES.md) — Practical guides for common training scenarios
 - [Training Config Walkthrough](docs/TRAINING_CONFIG_WALKTHROUGH.md) — Training config reference
+- [Low VRAM Guide](docs/LOW_VRAM_GUIDE.md) — Training on 24GB GPUs with block swap, quantization, and optimizer offloading
 - [Local Setup Guide](docs/LOCAL_SETUP.md) — Setting up and running on a local GPU machine
 - [I2V Training Guide](docs/I2V_GUIDE.md) — Image-to-Video training with Wan models
 - [W&B Setup Guide](docs/WANDB_GUIDE.md) — Tracking training runs with Weights & Biases

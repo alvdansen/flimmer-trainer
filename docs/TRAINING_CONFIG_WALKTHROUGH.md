@@ -92,6 +92,8 @@ Fixed settings (optimizer type, betas, eps, gradient clipping) stay constant for
 
 Learning rate and weight decay are **starting values** — they apply during the full_noise phase and each expert inherits them after fork, unless overridden per-expert.
 
+**Low-VRAM optimizer options:** `cpu_offload` moves optimizer states to system RAM (requires torchao). `adam_mini` uses Hessian-aware partitioning for 45-50% optimizer state reduction (requires adam-mini package). Both reduce VRAM by ~2-4 GB. See [Low VRAM Guide](LOW_VRAM_GUIDE.md) for when to use each.
+
 **Why 5e-5?** Community recommendations (2e-4) are too aggressive for Wan 2.2, especially for the low-noise expert which overfits rapidly at high LR. 5e-5 is conservative. Each expert overrides as needed.
 
 ### Section 4: Scheduler
@@ -119,6 +121,7 @@ training:
   timestep_sampling: shift
   discrete_flow_shift: null              # null = model default
   gradient_checkpointing: true
+  blocks_to_swap: 0                      # 0 = off; set 10-30 for low-VRAM GPUs
   seed: 42
   resume_from: null                      # Checkpoint path to resume training
 
@@ -132,6 +135,8 @@ training:
 ```
 
 Fixed settings: precision (`bf16` for both training and frozen base model — no quantization shortcuts), timestep sampling (`shift` matches Wan's pretraining), gradient checkpointing (always on for video).
+
+**`blocks_to_swap`** — number of transformer blocks to offload to CPU during forward/backward passes. Each block freed saves ~0.67 GB VRAM. Set to 0 (default) on 48GB+ GPUs. For 24GB GPUs, use 20-30 depending on resolution and model variant. See [Low VRAM Guide](LOW_VRAM_GUIDE.md) for per-GPU-tier recommendations.
 
 **`resume_from`** points to a checkpoint directory to resume training from. The system restores optimizer state, scheduler state, RNG, and training progress. Resume operates at epoch granularity — partial epochs are skipped and the next full epoch starts.
 
@@ -277,7 +282,7 @@ Vocabulary — what names are legal in config fields. Eight sets:
 
 | Set | Count | Examples |
 |-----|-------|---------|
-| `VALID_OPTIMIZERS` | 7 | adamw, adamw8bit, adafactor, came, prodigy, ademamix, schedule_free_adamw |
+| `VALID_OPTIMIZERS` | 9 | adamw, adamw8bit, adafactor, came, prodigy, ademamix, schedule_free_adamw, cpu_offload, adam_mini |
 | `VALID_SCHEDULERS` | 11 | constant, cosine, cosine_with_min_lr, polynomial, rex, warmup_stable_decay... |
 | `VALID_MIXED_PRECISION` | 3 | bf16, fp16, no |
 | `VALID_BASE_PRECISION` | 5 | fp8, fp8_scaled, bf16, fp16, fp32 |
@@ -324,7 +329,7 @@ All constants with `T2V_` or `I2V_` prefixes. Organized into zones:
 | `SchedulerConfig` | type, warmup_steps, min_lr, min_lr_ratio, rex_alpha, rex_beta |
 | `MoeExpertOverrides` | enabled, learning_rate, dropout, max_epochs, fork_targets, block_targets, resume_from, batch_size, gradient_accumulation_steps, caption_dropout_rate, weight_decay, min_lr_ratio, optimizer_type, scheduler_type |
 | `MoeConfig` | enabled, fork_enabled, expert_order, preload_experts, high_noise, low_noise, boundary_ratio |
-| `TrainingLoopConfig` | unified_epochs, unified_targets, unified_block_targets, batch_size, gradient_accumulation_steps, mixed_precision, base_model_precision, caption_dropout_rate, timestep_sampling, discrete_flow_shift, seed, max_train_steps, resume_from |
+| `TrainingLoopConfig` | unified_epochs, unified_targets, unified_block_targets, batch_size, gradient_accumulation_steps, mixed_precision, base_model_precision, caption_dropout_rate, timestep_sampling, discrete_flow_shift, blocks_to_swap, seed, max_train_steps, resume_from |
 | `SaveConfig` | output_dir, name, save_every_n_epochs, save_last, max_checkpoints, format |
 | `LoggingConfig` | backends, log_every_n_steps, wandb_project, wandb_entity, wandb_run_name, wandb_group, wandb_tags, vram_sample_every_n_steps |
 | `SamplingConfig` | enabled, every_n_epochs, prompts, neg, seed, walk_seed, sample_steps, guidance_scale, sample_dir, skip_phases |
@@ -384,6 +389,7 @@ This means a user who sets `optimizer.learning_rate: 1e-4` overrides the default
 | Batch size | 1 | Video is memory-heavy |
 | Mixed precision | bf16 | Training precision |
 | Base model precision | bf16 | Quality first — fp8 available if VRAM-constrained |
+| Block swap | 0 (off) | Set 20-30 for 24GB GPUs — see [Low VRAM Guide](LOW_VRAM_GUIDE.md) |
 | Flow shift | 5.0 (T2V) / 3.0 (I2V) | Wan 2.2 flow matching parameter |
 | Timestep boundary | 0.875 (T2V) / 0.900 (I2V) | Where high-noise expert hands off to low-noise |
 | Caption dropout | 0.10 (T2V) / 0.15 (I2V) | Forces reliance on visual conditioning |

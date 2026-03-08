@@ -71,8 +71,12 @@ Video models are enormous. Wan 2.2 I2V is 14B active parameters. Training requir
 **Key techniques**:
 - **Gradient checkpointing**: Trade compute for memory — don't store all activations, recompute them during backward pass. Saves ~60% VRAM at ~20% speed cost.
 - **Mixed precision (bf16)**: Keep weights in bfloat16 instead of float32. Halves memory for model weights.
+- **Block swapping**: Offload transformer blocks to CPU during forward/backward passes. Each block freed saves ~0.67 GB VRAM. Essential for 24GB GPUs training Wan 14B. Tradeoff: ~15-30% slower depending on PCIe bandwidth.
 - **Model offloading**: Move the text encoder to CPU after encoding captions. Move the VAE to CPU after encoding video latents.
+- **CPU-offloaded optimizer**: Move optimizer states (2x LoRA weights for AdamW) to system RAM instead of VRAM. Saves ~2-4 GB with minimal speed impact.
 - **Gradient accumulation**: Process one video at a time but accumulate gradients over N steps before updating. Simulates larger batch sizes without the memory cost.
+
+For a full breakdown of VRAM optimizations by GPU tier, see [Low VRAM Guide](LOW_VRAM_GUIDE.md).
 
 ### 4. Video-Specific Considerations
 **Temporal compression**: Wan-VAE is a 3D causal VAE with ~4x temporal compression. 81 frames -> ~21 temporal tokens. This means clip preparation directly affects what the model sees — frame rate, clip length, and temporal alignment all matter.
@@ -212,9 +216,11 @@ flimmer-kit/
 │       ├── sampler.py             # Video sampling during training
 │       ├── metrics.py             # Loss tracking, per-expert metrics
 │       ├── logger.py              # W&B logging
+│       ├── vram.py                # VRAM estimation and per-GPU-tier recommendations
 │       │
 │       └── wan/                   # Wan model backend
 │           ├── backend.py         # Forward pass, LoRA targets, expert masks
+│           ├── block_swap.py      # Block offloading (CPU ↔ GPU during forward/backward)
 │           ├── inference.py       # Sampling pipeline
 │           ├── checkpoint_io.py   # Checkpoint I/O (diffusers/ComfyUI format)
 │           └── registry.py        # Variant registry (2.1 T2V, 2.2 T2V, 2.2 I2V)
