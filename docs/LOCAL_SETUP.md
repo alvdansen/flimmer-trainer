@@ -191,8 +191,8 @@ For a conceptual overview of the phase system, see the [Phase System](../README.
 
 ```bash
 export FLIMMER_VENV=/home/user/my-venvs/flimmer
-bash scripts/prepare.sh --config train.yaml
-bash scripts/train.sh --config train.yaml
+bash scripts/prepare.sh --config my_project/flimmer_train.yaml
+bash scripts/train.sh --config my_project/flimmer_train.yaml
 ```
 
 ---
@@ -310,8 +310,8 @@ Launches training with either a single config or a project-based multi-phase wor
 
 ```powershell
 $env:FLIMMER_VENV = "C:\path\to\my-venv"
-.\scripts\prepare.ps1 -Config train.yaml
-.\scripts\train.ps1 -Config train.yaml
+.\scripts\prepare.ps1 -Config my_project\flimmer_train.yaml
+.\scripts\train.ps1 -Config my_project\flimmer_train.yaml
 ```
 
 ## Troubleshooting (Windows)

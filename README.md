@@ -17,26 +17,36 @@ The data preparation tools are **standalone** — they produce standard output f
 ```bash
 cd /workspace
 git clone https://github.com/alvdansen/flimmer-trainer.git
-bash /workspace/flimmer-trainer/runpod/setup.sh --variant 2.2_i2v   # install + download weights
-python /workspace/flimmer-trainer/runpod/train.py --config my_train.yaml  # encode + train
+bash /workspace/flimmer-trainer/runpod/setup.sh --variant 2.2_i2v        # install + download weights
+cp /workspace/flimmer-trainer/runpod/test-train.yaml /workspace/my_train.yaml  # copy starter config
+# Edit my_train.yaml: set data_config to your dataset's flimmer_data.yaml
+python /workspace/flimmer-trainer/runpod/train.py --config /workspace/my_train.yaml  # encode + train
 ```
 
 See [RunPod Quickstart](runpod/README.md) for full guide.
 
 ### Local setup (Linux / Windows)
 
+Copy one of the starter projects and add your clips:
+
+```bash
+cp -r example_simple/ my_project/
+# Add your .mp4 + .txt files to my_project/video_clips/
+# Edit my_project/flimmer_train.yaml: set model weight paths
+```
+
 **Linux:**
 ```bash
-bash scripts/setup.sh --variant 2.2_i2v         # install deps + download weights
-bash scripts/prepare.sh --config train.yaml      # pre-encode latents + text
-bash scripts/train.sh --config train.yaml        # train
+bash scripts/setup.sh --variant 2.2_i2v                              # install deps + download weights
+bash scripts/prepare.sh --config my_project/flimmer_train.yaml       # pre-encode latents + text
+bash scripts/train.sh --config my_project/flimmer_train.yaml         # train
 ```
 
 **Windows (PowerShell):**
 ```powershell
-.\scripts\setup.ps1 -Variant 2.2_i2v            # install deps + download weights
-.\scripts\prepare.ps1 -Config train.yaml         # pre-encode latents + text
-.\scripts\train.ps1 -Config train.yaml           # train
+.\scripts\setup.ps1 -Variant 2.2_i2v                                # install deps + download weights
+.\scripts\prepare.ps1 -Config my_project\flimmer_train.yaml         # pre-encode latents + text
+.\scripts\train.ps1 -Config my_project\flimmer_train.yaml           # train
 ```
 
 See [Local Setup Guide](docs/LOCAL_SETUP.md) for full options and project-based workflows.
@@ -52,9 +62,9 @@ your_dataset/           encode              train
 ```
 
 ```bash
-python -m flimmer.encoding cache-latents -c train.yaml
-python -m flimmer.encoding cache-text -c train.yaml
-python -m flimmer.training train -c train.yaml
+python -m flimmer.encoding cache-latents -c my_project/flimmer_train.yaml
+python -m flimmer.encoding cache-text -c my_project/flimmer_train.yaml
+python -m flimmer.training train -c my_project/flimmer_train.yaml
 ```
 
 **Starting from raw footage?**
@@ -64,12 +74,12 @@ raw_video.mp4 → split into clips → caption → validate → encode → train
 ```
 
 ```bash
-python -m flimmer.video ingest video.mp4 -o clips           # scene detect + split
-python -m flimmer.video caption clips -p gemini -a "Holly"   # generate captions
-python -m flimmer.dataset validate clips                     # check everything looks right
-python -m flimmer.encoding cache-latents -c train.yaml       # encode through VAE
-python -m flimmer.encoding cache-text -c train.yaml          # encode captions through T5
-python -m flimmer.training train -c train.yaml               # train
+python -m flimmer.video ingest video.mp4 -o clips                        # scene detect + split
+python -m flimmer.video caption clips -p gemini -a "Holly"                # generate captions
+python -m flimmer.dataset validate clips                                  # check everything looks right
+python -m flimmer.encoding cache-latents -c my_project/flimmer_train.yaml # encode through VAE
+python -m flimmer.encoding cache-text -c my_project/flimmer_train.yaml    # encode captions through T5
+python -m flimmer.training train -c my_project/flimmer_train.yaml         # train
 ```
 
 **Have pre-cut clips that need normalizing?**
@@ -84,8 +94,6 @@ python -m flimmer.video caption ready/ -p gemini -a "Holly"  # caption
 python -m flimmer.dataset validate ready/                    # validate
 # then encode + train as above
 ```
-
-For a deep dive on dataset preparation strategies, see [Klippbok](link-tbd).
 
 ## What You Can Do
 
