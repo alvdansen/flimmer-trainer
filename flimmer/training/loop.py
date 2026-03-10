@@ -1559,7 +1559,7 @@ class TrainingOrchestrator:
                 partner_file,
                 torch_dtype=torch.bfloat16,
                 device="cpu",
-                config="Wan-AI/Wan2.2-T2V-A14B-Diffusers",
+                config=self._backend._resolve_config_repo() or "Wan-AI/Wan2.2-T2V-A14B-Diffusers",
                 subfolder=subfolder,
             )
 

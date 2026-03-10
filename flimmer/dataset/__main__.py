@@ -177,8 +177,8 @@ def cmd_validate(args: argparse.Namespace) -> int:
     if args.config:
         config_path = Path(args.config).resolve()
         config_dir = config_path.parent
-        from flimmer.config.loader import load_config
-        config = load_config(str(config_path))
+        from flimmer.config.loader import load_data_config
+        config = load_data_config(str(config_path))
     else:
         config_dir = dataset_path if dataset_path.is_dir() else dataset_path.parent
         config = FlimmerDataConfig(

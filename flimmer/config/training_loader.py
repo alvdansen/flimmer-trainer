@@ -386,6 +386,6 @@ def _format_validation_error(error: ValidationError) -> str:
         lines.append(f"  {location}: {message}")
 
     lines.append(
-        "\nSee config_templates/ in flimmer-kit for valid training config files."
+        "\nSee config_templates/ in flimmer-trainer for valid training config files."
     )
     return "\n".join(lines)
