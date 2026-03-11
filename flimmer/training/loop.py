@@ -250,15 +250,9 @@ class TrainingOrchestrator:
                 self._model.to(device)
         if self._config.training.gradient_checkpointing:
             self._backend.setup_gradient_checkpointing(self._model)
-        # Block swap setup (after gradient checkpointing, before phase execution).
-        # Uses hasattr guard to keep loop compatible with non-Wan backends.
-        if (
-            getattr(self._config.training, "blocks_to_swap", 0) > 0
-            and hasattr(self._backend, "setup_block_swap")
-        ):
-            self._backend.setup_block_swap(
-                self._model, self._config.training.blocks_to_swap
-            )
+        # Block swap is deferred to _execute_phase (after LoRA injection)
+        # so that pinned buffers are created for the correct module tree.
+        self._block_swap_initialized = False
 
         # Execute phases
         for phase_idx in range(start_phase_idx, len(self._phases)):
@@ -370,6 +364,18 @@ class TrainingOrchestrator:
 
             # Create LoRA adapter on model, inject weights if available
             active_lora = self._setup_phase_lora(phase, active_lora)
+
+            # Block swap setup (after LoRA injection so pinned buffers
+            # match the final module tree including adapter wrappers).
+            if (
+                not self._block_swap_initialized
+                and getattr(self._config.training, "blocks_to_swap", 0) > 0
+                and hasattr(self._backend, "setup_block_swap")
+            ):
+                self._backend.setup_block_swap(
+                    self._model, self._config.training.blocks_to_swap
+                )
+                self._block_swap_initialized = True
 
             # Build optimizer and scheduler with real model parameters
             optimizer, scheduler = self._build_phase_optimizer(phase, dataset)
@@ -533,15 +539,19 @@ class TrainingOrchestrator:
                 self._model.to(device)
         if self._config.training.gradient_checkpointing:
             self._backend.setup_gradient_checkpointing(self._model)
-        # Re-register block swap after expert switch (disk reload destroys hooks;
-        # state_dict swap hooks survive but setup_block_swap handles both paths).
+        # Mark block swap for re-initialization after expert switch.
+        # Actual setup is deferred to _execute_phase (after LoRA injection)
+        # so pinned buffers match the final module tree.
         if (
             getattr(self._config.training, "blocks_to_swap", 0) > 0
             and hasattr(self._backend, "setup_block_swap")
         ):
-            self._backend.setup_block_swap(
-                self._model, self._config.training.blocks_to_swap
-            )
+            self._block_swap_initialized = False
+            # For state_dict swap, hooks survive but we need to re-prepare
+            # block devices. For disk reload, hooks are destroyed so we
+            # need full re-init. The flag handles both — setup_block_swap
+            # cleans up existing hooks before re-registering.
+            pass  # Deferred to after _setup_phase_lora in _execute_phase
 
     def _setup_phase_lora(
         self,

@@ -54,15 +54,25 @@ def _get_linear_weights(block: nn.Module) -> list[tuple[nn.Module, str]]:
     nn.Linear, bitsandbytes Linear8bitLt, and Linear4bit. Only yields
     modules that have a 'weight' attribute.
 
+    Skips Linears that are descendants of an already-matched Linear to
+    avoid picking up LoRA adapter sub-modules (lora_A, lora_B, bridge,
+    etc.) which are injected as children of the base Linear layer.
+
     Why class-name matching instead of isinstance:
         bitsandbytes linear classes are not always importable (optional dep).
         The musubi-tuner uses the same class-name check for compatibility.
     """
     results = []
-    for module in block.modules():
+    matched_prefixes: list[str] = []
+    for name, module in block.named_modules():
+        # Skip modules nested inside an already-matched Linear (e.g. LoRA
+        # adapter sub-Linears like lora_A.default, adapter.linear, etc.)
+        if any(name.startswith(p + ".") for p in matched_prefixes):
+            continue
         if module.__class__.__name__.endswith("Linear") and hasattr(module, "weight"):
             if module.weight is not None:
                 results.append((module, "weight"))
+                matched_prefixes.append(name)
     return results
 
 
@@ -256,15 +266,28 @@ class BlockSwapOffloader:
     def _make_forward_pre_hook(
         self, blocks: nn.ModuleList, block_idx: int
     ) -> Any:
-        """Create hook that synchronizes stream before block forward.
+        """Create hook that ensures block weights are on GPU before forward.
 
-        Ensures any pending async transfer of this block's weights is
-        complete before the main stream executes the block. Prevents
-        NaN/illegal-memory-access from using partially-transferred weights.
+        First waits for any pending async transfer to complete, then
+        checks if the block's weights are actually on GPU. If not
+        (e.g., during gradient-checkpoint backward recomputation where
+        traversal order differs from forward), moves them synchronously.
+
+        This makes block swap compatible with gradient checkpointing,
+        which re-runs forward passes in reverse during backward.
         """
 
         def hook(module: nn.Module, args: Any) -> None:
             self._wait_for_stream()
+            # For swappable blocks, ensure weights are on GPU.
+            # During backward recomputation (gradient checkpointing),
+            # blocks may be accessed out-of-order and the forward-pass
+            # prefetch logic won't have moved them.
+            if block_idx >= self._num_resident:
+                weights = _get_linear_weights(module)
+                if weights and weights[0][0].weight.data.device != self.device:
+                    self._move_block_to_gpu(blocks, block_idx)
+                    self._wait_for_stream()
 
         return hook
 
