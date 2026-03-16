@@ -863,6 +863,36 @@ class WanModelBackend:
             len(blocks),
         )
 
+    def suspend_block_swap(self, model: Any) -> None:
+        """Move all swapped blocks back to GPU and remove hooks for inference.
+
+        Block swap hooks actively move weights between CPU and GPU during
+        forward passes. During inference (via diffusers WanPipeline), these
+        hooks corrupt output by swapping blocks mid-denoising. This method:
+        1. Moves all offloaded blocks back to GPU
+        2. Removes all swap hooks so the pipeline forward pass is clean
+
+        Call resume_block_swap() after to restore hooks and CPU offloading.
+        """
+        if self._offloader is None or self._offloader.blocks_to_swap == 0:
+            return
+        import torch
+        blocks = model.blocks
+        for i in range(self._offloader._num_resident, self._offloader.num_blocks):
+            self._offloader._move_block_to_gpu(blocks, i)
+            torch.cuda.current_stream().wait_stream(self._offloader._stream)
+        # Remove hooks so they don't fire during inference forward passes
+        self._offloader.remove_hooks()
+
+    def resume_block_swap(self, model: Any) -> None:
+        """Restore block swap hooks and CPU offloading after inference."""
+        if self._offloader is None or self._offloader.blocks_to_swap == 0:
+            return
+        blocks = model.blocks
+        # Re-register hooks before restoring device placement
+        self._offloader._register_hooks(blocks)
+        self._offloader.prepare_block_devices(blocks)
+
     def get_noise_schedule(self) -> FlowMatchingSchedule:
         """Return the flow matching noise schedule for Wan.
 

@@ -255,10 +255,10 @@ T2V_BASE_MODEL_PRECISION: str = "bf16"
 fp8 is available if VRAM-constrained (cuts ~28 GB to ~14 GB) but
 quality comes first — don't quantize unless you have to."""
 
-T2V_TIMESTEP_SAMPLING: str = "shift"
-"""Wan models were trained with shifted timestep sampling. Using the same
-distribution during fine-tuning maintains consistency with the pretrained
-model's learned noise-level expectations."""
+T2V_TIMESTEP_SAMPLING: str = "sigmoid"
+"""Sigmoid timestep sampling concentrates training on mid-range noise levels
+where most visual detail is learned. Matches ai-toolkit (Ostris) defaults
+and SD3/flow matching paper recommendations."""
 
 
 # ─── Wan 2.2 T2V: Unified Foundation ───
@@ -476,7 +476,7 @@ T2V_SAMPLING_STEPS: int = 30
 """Denoising steps for sample generation. 30 is a good balance between
 quality and speed for progress monitoring."""
 
-T2V_SAMPLING_GUIDANCE: float = 4.0
+T2V_SAMPLING_GUIDANCE: float = 5.0
 """Guidance scale for sample generation. 4.0 is the validated default for
 balanced text adherence without over-saturation."""
 
@@ -1384,8 +1384,8 @@ class TrainingLoopConfig(BaseModel):
     timestep_sampling: str = Field(
         default=T2V_TIMESTEP_SAMPLING,
         description=(
-            "How to sample noise timesteps during training. 'shift' matches "
-            "Wan's pretraining distribution."
+            "How to sample noise timesteps during training. 'sigmoid' concentrates "
+            "on mid-range noise levels (recommended). 'shift' biases toward high noise."
         ),
     )
     discrete_flow_shift: float | None = Field(
