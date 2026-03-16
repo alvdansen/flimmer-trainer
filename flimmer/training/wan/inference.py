@@ -11,7 +11,7 @@ Memory strategy:
        - transformer_2 = LOW-noise expert (runs second, small timesteps)
        - boundary_ratio = 0.6 for T2V, 0.9 for I2V
        - VAE = loaded from disk (small: ~243MB), always float32
-       - scheduler = FlowMatchEulerDiscreteScheduler with shift=5.0
+       - scheduler = UniPCMultistepScheduler with flow matching
     3. Generate using prompt_embeds (pre-encoded) → skip T5 entirely
     4. Free VAE + pipeline after generation
 
@@ -81,6 +81,10 @@ class WanInferencePipeline:
         is_i2v: Whether this is an I2V pipeline.
         dtype: Tensor dtype for inference ('bf16', 'fp16', 'fp32').
         device: Target device ('cuda', 'cpu').
+        flow_shift: Flow matching shift parameter for the scheduler.
+            Must match the value used during training to avoid noise
+            level mismatch. Defaults to 5.0 (Wan 2.2 T2V default).
+            Wan 2.1 T2V uses 3.0.
         lora_path: Path to a saved LoRA checkpoint (.safetensors).
             If set, the LoRA is loaded via pipeline.load_lora_weights()
             after building the pipeline. The file must have diffusers-
@@ -95,6 +99,7 @@ class WanInferencePipeline:
         is_i2v: bool = False,
         dtype: str = "bf16",
         device: str = "cuda",
+        flow_shift: float = 5.0,
         lora_path: str | None = None,
     ) -> None:
         self._vae_path = vae_path
@@ -103,6 +108,7 @@ class WanInferencePipeline:
         self._is_i2v = is_i2v
         self._dtype_str = dtype
         self._device = device
+        self._flow_shift = flow_shift
         self._lora_path = lora_path
 
         # Cached prompt embeddings (populated on first generate call)
@@ -441,29 +447,43 @@ class WanInferencePipeline:
 
         try:
             # Step 1: Pre-encode prompts (loads T5 temporarily, then frees it)
-            all_prompts = [prompt]
-            if negative_prompt:
-                all_prompts.append(negative_prompt)
-            self._precompute_embeddings(all_prompts, negative_prompt)
+            # Always include the negative prompt (even empty string) so the
+            # pipeline receives negative_prompt_embeds. Without this, diffusers
+            # tries to encode the negative prompt via self.text_encoder which
+            # is None (we only load T5 temporarily), causing:
+            #   'NoneType' object has no attribute 'dtype'
+            neg_prompt = negative_prompt if negative_prompt else ""
+            all_prompts = [prompt, neg_prompt]
+            self._precompute_embeddings(all_prompts, neg_prompt)
 
             # Move cached embeddings to GPU
             prompt_embeds = self._cached_prompt_embeds[prompt].to(
                 self._device, dtype=self._get_torch_dtype()
             )
-            neg_embeds = None
-            if negative_prompt and negative_prompt in self._cached_prompt_embeds:
-                neg_embeds = self._cached_prompt_embeds[negative_prompt].to(
-                    self._device, dtype=self._get_torch_dtype()
-                )
+            neg_embeds = self._cached_prompt_embeds[neg_prompt].to(
+                self._device, dtype=self._get_torch_dtype()
+            )
 
-            # Step 2: Build pipeline — dual-expert if partner available
+            # Step 2: Merge LoRA weights into base model for inference.
+            # PeftModel wrappers can confuse diffusers pipelines (dtype/device
+            # detection, internal attribute access). Merging bakes LoRA deltas
+            # into the base weights so the pipeline sees clean tensors.
+            _peft_merged = False
+            if hasattr(model, "merge_adapter"):
+                model.merge_adapter()
+                _peft_merged = True
+
+            # Step 2b: Build pipeline — pass the PeftModel directly.
+            # After merge_adapter(), the base weights contain LoRA deltas
+            # and PeftModel forwards cleanly. Unwrapping via get_base_model()
+            # can break device placement when block swap is active.
             pipeline = self._build_pipeline(
                 model,
                 partner_model=partner_model,
                 active_expert=active_expert,
             )
 
-            # Step 2b: Load LoRA from file if configured (standalone inference)
+            # Step 2c: Load LoRA from file if configured (standalone inference)
             if self._lora_path is not None:
                 self._apply_lora_from_file(pipeline, self._lora_path)
 
@@ -503,6 +523,10 @@ class WanInferencePipeline:
             with torch.no_grad():
                 output = pipeline(**kwargs)
 
+            # NOTE: LoRA unmerge is deferred to after block swap resumes
+            # (in loop.py _generate_samples). Unmerging while blocks are on
+            # GPU but LoRA adapter weights are on CPU causes device mismatch.
+
             # Restore training mode
             if was_training:
                 model.train()
@@ -533,6 +557,8 @@ class WanInferencePipeline:
                 "training batch size to free memory for sampling."
             )
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             _clean_gpu_memory()
             raise SamplingError(
                 f"Video generation failed: {e}\n"
@@ -621,14 +647,21 @@ class WanInferencePipeline:
         Returns:
             WanPipeline or WanImageToVideoPipeline instance.
         """
-        from diffusers import FlowMatchEulerDiscreteScheduler
+        from diffusers import UniPCMultistepScheduler
 
         # Load VAE (small: ~243MB)
         vae = self._load_vae()
 
-        # Create scheduler with flow_shift=5.0 for Wan models.
-        # Validated against ComfyUI quality path (shift=5.0, euler sampler).
-        scheduler = FlowMatchEulerDiscreteScheduler(shift=5.0)
+        # UniPCMultistepScheduler with flow matching — matches musubi-tuner
+        # and ai-toolkit sampling. FlowMatchEulerDiscreteScheduler produced
+        # noise; UniPC's higher-order solver handles the denoising trajectory
+        # better for LoRA-trained models with block swap.
+        scheduler = UniPCMultistepScheduler(
+            prediction_type="flow_prediction",
+            num_train_timesteps=1000,
+            flow_shift=self._flow_shift,
+            use_flow_sigmas=True,
+        )
 
         # Determine expert assignment for the pipeline
         # Diffusers convention: transformer = HIGH-noise, transformer_2 = LOW-noise
@@ -645,18 +678,22 @@ class WanInferencePipeline:
             transformer_high = model
             transformer_low = None
 
-        # Boundary ratio: 0.6 for T2V (high-noise expert handles first 60%
-        # of steps, low-noise handles last 40%). Validated on RunPod against
-        # ComfyUI reference workflow (step 15/25 = 0.6). I2V uses 0.9.
-        boundary = 0.9 if self._is_i2v else 0.6
+        # Boundary ratio: controls handoff between high-noise and low-noise
+        # experts. Only meaningful when both transformers are present.
+        # T2V: 0.6 (validated against ComfyUI), I2V: 0.9.
+        # Single-expert: must be None — the pipeline checks
+        #   `if boundary_timestep is None: use self.transformer`
+        # Any numeric value (even 1.0) causes boundary_timestep comparison
+        # against descending timesteps, eventually routing to transformer_2
+        # (None), causing: 'NoneType' object has no attribute 'cache_context'
+        if transformer_low is None:
+            boundary = None
+        elif self._is_i2v:
+            boundary = 0.9
+        else:
+            boundary = 0.6
 
-        # Diagnostic logging — makes pipeline configuration visible in
-        # training logs for debugging inference issues.
-        print(
-            f"  Pipeline: transformer={'SET'}, "
-            f"transformer_2={'SET' if transformer_low is not None else 'NONE'}, "
-            f"boundary_ratio={boundary}, active_expert={active_expert}"
-        )
+
 
         if self._is_i2v:
             from diffusers import WanImageToVideoPipeline

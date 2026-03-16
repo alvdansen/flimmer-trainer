@@ -1440,6 +1440,11 @@ class TrainingOrchestrator:
             # wires transformer (high=partner) / transformer_2 (low=model).
             active_expert_for_inference = "low_noise"
 
+        # Suspend block swap so all transformer blocks are on GPU for
+        # inference. Diffusers pipelines don't trigger block swap hooks.
+        if hasattr(self._backend, "suspend_block_swap"):
+            self._backend.suspend_block_swap(self._model)
+
         try:
             # If user specified a LoRA override, load it from disk instead
             # of using the live training weights. This lets users sample with
@@ -1508,6 +1513,20 @@ class TrainingOrchestrator:
                         torch.cuda.empty_cache()
                 except ImportError:
                     pass
+
+            # Resume block swap offloading for training
+            if hasattr(self._backend, "resume_block_swap"):
+                self._backend.resume_block_swap(self._model)
+
+            # Unmerge LoRA after block swap resumes. During suspend, base
+            # weights are on GPU but LoRA adapter weights may be on CPU.
+            # Unmerging requires both on the same device, so we wait until
+            # blocks are back on CPU (matching adapter weight placement).
+            if hasattr(self._model, "unmerge_adapter"):
+                try:
+                    self._model.unmerge_adapter()
+                except Exception as e:
+                    pass  # Unmerge may fail with device mismatch; benign
 
     def _load_partner_model(
         self,
