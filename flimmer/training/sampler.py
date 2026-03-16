@@ -253,7 +253,7 @@ class SamplingEngine:
         seed: int = 42,
         walk_seed: bool = True,
         num_inference_steps: int = 30,
-        guidance_scale: float = 4.0,
+        guidance_scale: float = 5.0,
         sample_dir: str | Path | None = None,
         skip_phases: list[str] | None = None,
     ) -> None:

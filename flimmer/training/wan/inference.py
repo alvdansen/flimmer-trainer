@@ -395,7 +395,7 @@ class WanInferencePipeline:
         prompt: str,
         negative_prompt: str = "",
         num_inference_steps: int = 30,
-        guidance_scale: float = 4.0,
+        guidance_scale: float = 5.0,
         seed: int = 42,
         reference_image: Any = None,
         partner_model: Any = None,
